@@ -1,0 +1,73 @@
+<div class="container mt-4">
+  <h2>Quản lý sự cố</h2>
+
+  <!-- Biểu đồ thống kê -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <h4>Thống kê sự cố theo phòng</h4>
+      <canvas id="bieuDoPhong"></canvas>
+    </div>
+    <div class="col-md-6">
+      <h4>Thống kê sự cố theo trạng thái</h4>
+      <canvas id="bieuDoTrangThai"></canvas>
+    </div>
+  </div>
+
+  <!-- Bộ lọc trạng thái -->
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <select class="form-select" [(ngModel)]="selectedTrangThai" (change)="onTrangThaiChange()">
+        <option *ngFor="let option of trangThaiOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Bảng danh sách sự cố -->
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Mã phòng</th>
+          <th>Mô tả</th>
+          <th>Thời gian báo cáo</th>
+          <th>Người báo cáo</th>
+          <th>Trạng thái</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let suCo of danhSachSuCo">
+          <td>{{ suCo.phong.maPhong }}</td>
+          <td>{{ suCo.moTa }}</td>
+          <td>{{ suCo.thoiGianBaoCao | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td>{{ suCo.nguoiBaoCao.hoTen }}</td>
+          <td>
+            <span [ngClass]="{
+              'badge bg-warning': suCo.trangThai === 'ChuaXuLy',
+              'badge bg-info': suCo.trangThai === 'DangXuLy',
+              'badge bg-success': suCo.trangThai === 'DaXuLy'
+            }">
+              {{ suCo.trangThai }}
+            </span>
+          </td>
+          <td>
+            <div class="btn-group" *ngIf="suCo.trangThai !== 'DaXuLy'">
+              <button class="btn btn-sm btn-info" 
+                      (click)="updateTrangThai(suCo.idSuCo, 'DangXuLy')"
+                      *ngIf="suCo.trangThai === 'ChuaXuLy'">
+                Đang xử lý
+              </button>
+              <button class="btn btn-sm btn-success" 
+                      (click)="updateTrangThai(suCo.idSuCo, 'DaXuLy')"
+                      *ngIf="suCo.trangThai === 'DangXuLy'">
+                Đã xử lý
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div> 

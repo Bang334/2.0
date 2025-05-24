@@ -1,0 +1,614 @@
+package com.example.backend.controllers;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.ArrayList;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.backend.model.NguoiDung;
+import com.example.backend.model.QuanLy;
+import com.example.backend.model.YeuCauMuonPhong;
+import com.example.backend.model.User;
+import com.example.backend.model.Role;
+import com.example.backend.model.SinhVien;
+import com.example.backend.model.GiangVien;
+import com.example.backend.payload.request.YeuCauMuonPhongRequest;
+import com.example.backend.payload.request.TaiKhoanRequest;
+import com.example.backend.payload.response.MessageResponse;
+import com.example.backend.repository.NguoiDungRepository;
+import com.example.backend.repository.QuanLyRepository;
+import com.example.backend.repository.YeuCauMuonPhongRepository;
+import com.example.backend.repository.UserRepository;
+import com.example.backend.repository.RoleRepository;
+import com.example.backend.repository.SinhVienRepository;
+import com.example.backend.repository.GiangVienRepository;
+import com.example.backend.security.services.UserDetailsImpl;
+
+@CrossOrigin(origins = "*", maxAge = 3600)
+@RestController
+@RequestMapping("/api/quanly")
+public class QuanLyController {
+    @Autowired
+    private QuanLyRepository quanLyRepository;
+    
+    @Autowired
+    private NguoiDungRepository nguoiDungRepository;
+    
+    @Autowired
+    private YeuCauMuonPhongRepository yeuCauMuonPhongRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private RoleRepository roleRepository;
+    
+    @Autowired
+    private SinhVienRepository sinhVienRepository;
+    
+    @Autowired
+    private GiangVienRepository giangVienRepository;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
+    private QuanLy getCurrentQuanLy() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        String userId = userDetails.getId();
+        
+        Optional<NguoiDung> nguoiDungOpt = nguoiDungRepository.findByTaiKhoanId(userId);
+        if (nguoiDungOpt.isPresent()) {
+            NguoiDung nguoiDung = nguoiDungOpt.get();
+            Optional<QuanLy> quanLyOpt = quanLyRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+            if (quanLyOpt.isPresent()) {
+                return quanLyOpt.get();
+            }
+        }
+        return null;
+    }
+    
+    // 1. Lấy danh sách yêu cầu mượn phòng cần duyệt
+    @GetMapping("/yeucau/dangxuly")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> getDanhSachYeuCauDangXuLy() {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        List<YeuCauMuonPhong> danhSachYeuCau = 
+            yeuCauMuonPhongRepository.findByTrangThai(YeuCauMuonPhong.TrangThai.DANGXULY);
+        
+        return ResponseEntity.ok(danhSachYeuCau);
+    }
+    
+    // 2. Duyệt yêu cầu mượn phòng
+    @PutMapping("/yeucau/duyet/{maYeuCau}")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> duyetYeuCau(@PathVariable Integer maYeuCau) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        Optional<YeuCauMuonPhong> yeuCauOpt = yeuCauMuonPhongRepository.findById(maYeuCau);
+        if (!yeuCauOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy yêu cầu mượn phòng"));
+        }
+        
+        YeuCauMuonPhong yeuCau = yeuCauOpt.get();
+        
+        // Kiểm tra nếu yêu cầu không ở trạng thái DANGXULY
+        if (yeuCau.getTrangThai() != YeuCauMuonPhong.TrangThai.DANGXULY) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Yêu cầu này đã được xử lý trước đó"));
+        }
+        
+        // Cập nhật trạng thái và người duyệt
+        yeuCau.setTrangThai(YeuCauMuonPhong.TrangThai.DADUYET);
+        yeuCau.setNguoiDuyet(quanLy.getNguoiDung());
+        
+        yeuCauMuonPhongRepository.save(yeuCau);
+        
+        return ResponseEntity.ok(new MessageResponse("Đã duyệt yêu cầu mượn phòng thành công"));
+    }
+    
+    // 3. Từ chối yêu cầu mượn phòng
+    @PutMapping("/yeucau/tuchoi/{maYeuCau}")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> tuChoiYeuCau(
+            @PathVariable Integer maYeuCau,
+            @RequestBody Map<String, String> request) {
+        
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        String lyDo = request.get("lyDo");
+        if (lyDo == null || lyDo.trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Cần cung cấp lý do từ chối"));
+        }
+        
+        Optional<YeuCauMuonPhong> yeuCauOpt = yeuCauMuonPhongRepository.findById(maYeuCau);
+        if (!yeuCauOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy yêu cầu mượn phòng"));
+        }
+        
+        YeuCauMuonPhong yeuCau = yeuCauOpt.get();
+        
+        // Kiểm tra nếu yêu cầu không ở trạng thái DANGXULY
+        if (yeuCau.getTrangThai() != YeuCauMuonPhong.TrangThai.DANGXULY) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Yêu cầu này đã được xử lý trước đó"));
+        }
+        
+        // Cập nhật trạng thái, người duyệt và lý do
+        yeuCau.setTrangThai(YeuCauMuonPhong.TrangThai.KHONGDUOCDUYET);
+        yeuCau.setNguoiDuyet(quanLy.getNguoiDung());
+        yeuCau.setLyDo(lyDo);
+        
+        yeuCauMuonPhongRepository.save(yeuCau);
+        
+        return ResponseEntity.ok(new MessageResponse("Đã từ chối yêu cầu mượn phòng"));
+    }
+    
+    // 4. Xem chi tiết yêu cầu mượn phòng
+    @GetMapping("/yeucau/{maYeuCau}")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> getChiTietYeuCau(@PathVariable Integer maYeuCau) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        Optional<YeuCauMuonPhong> yeuCauOpt = yeuCauMuonPhongRepository.findById(maYeuCau);
+        if (!yeuCauOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy yêu cầu mượn phòng"));
+        }
+        
+        YeuCauMuonPhong yeuCau = yeuCauOpt.get();
+        
+        // Tạo đối tượng chứa thông tin chi tiết để trả về
+        Map<String, Object> chiTietYeuCau = new HashMap<>();
+        chiTietYeuCau.put("maYeuCau", yeuCau.getMaYeuCau());
+        chiTietYeuCau.put("nguoiMuon", yeuCau.getNguoiMuon().getHoTen());
+        chiTietYeuCau.put("idNguoiMuon", yeuCau.getNguoiMuon().getIdNguoiDung());
+        chiTietYeuCau.put("phong", yeuCau.getPhong().getMaPhong());
+        chiTietYeuCau.put("maPhong", yeuCau.getPhong().getMaPhong());
+        chiTietYeuCau.put("loaiPhong", yeuCau.getPhong().getLoaiPhong().toString());
+        chiTietYeuCau.put("viTri", yeuCau.getPhong().getViTri());
+        chiTietYeuCau.put("thoiGianMuon", yeuCau.getThoiGianMuon());
+        chiTietYeuCau.put("thoiGianTra", yeuCau.getThoiGianTra());
+        chiTietYeuCau.put("mucDich", yeuCau.getMucDich());
+        chiTietYeuCau.put("trangThai", yeuCau.getTrangThai().toString());
+        chiTietYeuCau.put("lyDo", yeuCau.getLyDo());
+        
+        // Thêm thông tin người duyệt nếu có
+        if (yeuCau.getNguoiDuyet() != null) {
+            chiTietYeuCau.put("nguoiDuyet", yeuCau.getNguoiDuyet().getHoTen());
+            chiTietYeuCau.put("idNguoiDuyet", yeuCau.getNguoiDuyet().getIdNguoiDung());
+        } else {
+            chiTietYeuCau.put("nguoiDuyet", null);
+            chiTietYeuCau.put("idNguoiDuyet", null);
+        }
+        
+        return ResponseEntity.ok(chiTietYeuCau);
+    }
+    
+    // 1. Lấy danh sách tài khoản
+    @GetMapping("/taikhoan")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> getAllTaiKhoan() {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        List<User> taiKhoanList = userRepository.findAll();
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        
+        for (User taiKhoan : taiKhoanList) {
+            Optional<NguoiDung> nguoiDungOpt = nguoiDungRepository.findByTaiKhoanId(taiKhoan.getId());
+            if (nguoiDungOpt.isPresent()) {
+                NguoiDung nguoiDung = nguoiDungOpt.get();
+                Map<String, Object> taiKhoanInfo = new HashMap<>();
+                
+                taiKhoanInfo.put("id", taiKhoan.getId());
+                taiKhoanInfo.put("idNguoiDung", nguoiDung.getIdNguoiDung());
+                taiKhoanInfo.put("hoTen", nguoiDung.getHoTen());
+                taiKhoanInfo.put("email", nguoiDung.getEmail());
+                taiKhoanInfo.put("lienHe", nguoiDung.getLienHe());
+                taiKhoanInfo.put("gioiTinh", nguoiDung.getGioiTinh());
+                taiKhoanInfo.put("vaiTro", nguoiDung.getVaiTro().getName());
+                taiKhoanInfo.put("trangThai", taiKhoan.getTrangThai().toString());
+                taiKhoanInfo.put("thoiGianDangNhapCuoi", taiKhoan.getThoiGianDangNhapCuoi());
+                
+                resultList.add(taiKhoanInfo);
+            }
+        }
+        
+        return ResponseEntity.ok(resultList);
+    }
+    
+    // 2. Xem chi tiết tài khoản
+    @GetMapping("/taikhoan/{id}")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> getTaiKhoanById(@PathVariable String id) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        Optional<User> taiKhoanOpt = userRepository.findById(id);
+        if (!taiKhoanOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy tài khoản"));
+        }
+        
+        User taiKhoan = taiKhoanOpt.get();
+        Optional<NguoiDung> nguoiDungOpt = nguoiDungRepository.findByTaiKhoanId(id);
+        
+        if (!nguoiDungOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin người dùng"));
+        }
+        
+        NguoiDung nguoiDung = nguoiDungOpt.get();
+        Map<String, Object> taiKhoanInfo = new HashMap<>();
+        
+        taiKhoanInfo.put("id", taiKhoan.getId());
+        taiKhoanInfo.put("idNguoiDung", nguoiDung.getIdNguoiDung());
+        taiKhoanInfo.put("hoTen", nguoiDung.getHoTen());
+        taiKhoanInfo.put("email", nguoiDung.getEmail());
+        taiKhoanInfo.put("lienHe", nguoiDung.getLienHe());
+        taiKhoanInfo.put("gioiTinh", nguoiDung.getGioiTinh());
+        taiKhoanInfo.put("vaiTro", nguoiDung.getVaiTro().getName());
+        taiKhoanInfo.put("trangThai", taiKhoan.getTrangThai().toString());
+        taiKhoanInfo.put("thoiGianDangNhapCuoi", taiKhoan.getThoiGianDangNhapCuoi());
+        
+        // Thêm thông tin chi tiết dựa trên vai trò
+        String vaiTroName = nguoiDung.getVaiTro().getName();
+        if ("ROLE_SV".equals(vaiTroName)) {
+            SinhVien sinhVien = sinhVienRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+            if (sinhVien != null) {
+                taiKhoanInfo.put("maSinhVien", sinhVien.getMaSinhVien());
+                taiKhoanInfo.put("lopHoc", sinhVien.getLopHoc() != null ? sinhVien.getLopHoc().getMaLop() : null);
+            }
+        } else if ("ROLE_GV".equals(vaiTroName)) {
+            GiangVien giangVien = giangVienRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+            if (giangVien != null) {
+                taiKhoanInfo.put("maGiangVien", giangVien.getMaGiangVien());
+                taiKhoanInfo.put("chuyenNganh", giangVien.getChuyenNganh());
+                taiKhoanInfo.put("hocHam", giangVien.getHocHam());
+                taiKhoanInfo.put("hocVi", giangVien.getHocVi());
+            }
+        } else if ("ROLE_QL".equals(vaiTroName)) {
+            QuanLy quanLyInfo = quanLyRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung()).orElse(null);
+            if (quanLyInfo != null) {
+                taiKhoanInfo.put("maQuanLy", quanLyInfo.getMaQuanLy());
+                taiKhoanInfo.put("chucVu", quanLyInfo.getChucVu());
+            }
+        }
+        
+        return ResponseEntity.ok(taiKhoanInfo);
+    }
+    
+    // 3. Thêm tài khoản mới
+    @PostMapping("/taikhoan")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> createTaiKhoan(@RequestBody TaiKhoanRequest taiKhoanRequest) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        // Kiểm tra tài khoản đã tồn tại chưa
+        if (userRepository.existsById(taiKhoanRequest.getUserId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Tên đăng nhập đã tồn tại"));
+        }
+        
+        // Kiểm tra email đã tồn tại chưa
+        if (nguoiDungRepository.existsByEmail(taiKhoanRequest.getEmail())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Email đã được sử dụng"));
+        }
+        
+        // Tìm Role
+        Optional<Role> roleOpt = roleRepository.findByName(taiKhoanRequest.getVaiTro());
+        if (!roleOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Vai trò không hợp lệ"));
+        }
+        
+        // Tạo tài khoản User
+        User newUser = new User(
+            taiKhoanRequest.getUserId(),
+            passwordEncoder.encode(taiKhoanRequest.getPassword()),
+            User.TrangThai.HoatDong
+        );
+        
+        userRepository.save(newUser);
+        
+        // Tạo NguoiDung
+        NguoiDung nguoiDung = new NguoiDung();
+        String idNguoiDung = UUID.randomUUID().toString();
+        nguoiDung.setIdNguoiDung(idNguoiDung);
+        nguoiDung.setHoTen(taiKhoanRequest.getHoTen());
+        nguoiDung.setEmail(taiKhoanRequest.getEmail());
+        nguoiDung.setLienHe(taiKhoanRequest.getLienHe());
+        nguoiDung.setGioiTinh(NguoiDung.GioiTinh.valueOf(taiKhoanRequest.getGioiTinh()));
+        nguoiDung.setTaiKhoan(newUser);
+        nguoiDung.setVaiTro(roleOpt.get());
+        
+        nguoiDungRepository.save(nguoiDung);
+        
+        // Tạo vai trò cụ thể dựa trên loại tài khoản
+        if ("ROLE_SV".equals(taiKhoanRequest.getVaiTro())) {
+            SinhVien sinhVien = new SinhVien();
+            sinhVien.setMaSinhVien(taiKhoanRequest.getMaUser());
+            sinhVien.setNguoiDung(nguoiDung);
+            sinhVienRepository.save(sinhVien);
+        } else if ("ROLE_GV".equals(taiKhoanRequest.getVaiTro())) {
+            GiangVien giangVien = new GiangVien();
+            giangVien.setMaGiangVien(taiKhoanRequest.getMaUser());
+            giangVien.setNguoiDung(nguoiDung);
+            if (taiKhoanRequest.getChuyenNganh() != null) {
+                giangVien.setChuyenNganh(taiKhoanRequest.getChuyenNganh());
+            }
+            if (taiKhoanRequest.getHocHam() != null) {
+                giangVien.setHocHam(taiKhoanRequest.getHocHam());
+            }
+            if (taiKhoanRequest.getHocVi() != null) {
+                giangVien.setHocVi(taiKhoanRequest.getHocVi());
+            }
+            giangVienRepository.save(giangVien);
+        } else if ("ROLE_QL".equals(taiKhoanRequest.getVaiTro())) {
+            QuanLy newQuanLy = new QuanLy();
+            newQuanLy.setMaQuanLy(taiKhoanRequest.getMaUser());
+            newQuanLy.setNguoiDung(nguoiDung);
+            if (taiKhoanRequest.getChucVu() != null) {
+                newQuanLy.setChucVu(taiKhoanRequest.getChucVu());
+            }
+            quanLyRepository.save(newQuanLy);
+        }
+        
+        return ResponseEntity.ok(new MessageResponse("Tài khoản đã được tạo thành công"));
+    }
+    
+    // 4. Cập nhật tài khoản
+    @PutMapping("/taikhoan/{id}")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> updateTaiKhoan(@PathVariable String id, @RequestBody TaiKhoanRequest taiKhoanRequest) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        // Tìm tài khoản
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy tài khoản"));
+        }
+        
+        User user = userOpt.get();
+        
+        // Tìm người dùng
+        Optional<NguoiDung> nguoiDungOpt = nguoiDungRepository.findByTaiKhoanId(id);
+        if (!nguoiDungOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin người dùng"));
+        }
+        
+        NguoiDung nguoiDung = nguoiDungOpt.get();
+        
+        // Cập nhật thông tin người dùng
+        if (taiKhoanRequest.getHoTen() != null) {
+            nguoiDung.setHoTen(taiKhoanRequest.getHoTen());
+        }
+        
+        // Kiểm tra email mới nếu có thay đổi
+        if (taiKhoanRequest.getEmail() != null && !taiKhoanRequest.getEmail().equals(nguoiDung.getEmail())) {
+            if (nguoiDungRepository.existsByEmail(taiKhoanRequest.getEmail())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Email đã được sử dụng"));
+            }
+            nguoiDung.setEmail(taiKhoanRequest.getEmail());
+        }
+        
+        if (taiKhoanRequest.getLienHe() != null) {
+            nguoiDung.setLienHe(taiKhoanRequest.getLienHe());
+        }
+        
+        if (taiKhoanRequest.getGioiTinh() != null) {
+            nguoiDung.setGioiTinh(NguoiDung.GioiTinh.valueOf(taiKhoanRequest.getGioiTinh()));
+        }
+        
+        // Cập nhật mật khẩu nếu có
+        if (taiKhoanRequest.getPassword() != null && !taiKhoanRequest.getPassword().isEmpty()) {
+            user.setMatKhau(passwordEncoder.encode(taiKhoanRequest.getPassword()));
+        }
+        
+        // Cập nhật trạng thái nếu có
+        if (taiKhoanRequest.getTrangThai() != null) {
+            user.setTrangThai(User.TrangThai.valueOf(taiKhoanRequest.getTrangThai()));
+        }
+        
+        // Lưu thay đổi
+        userRepository.save(user);
+        nguoiDungRepository.save(nguoiDung);
+        
+        // Cập nhật thông tin vai trò cụ thể
+        String vaiTroName = nguoiDung.getVaiTro().getName();
+        if ("ROLE_SV".equals(vaiTroName)) {
+            SinhVien sinhVien = sinhVienRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+            if (sinhVien != null && taiKhoanRequest.getMaUser() != null) {
+                sinhVien.setMaSinhVien(taiKhoanRequest.getMaUser());
+                sinhVienRepository.save(sinhVien);
+            }
+        } else if ("ROLE_GV".equals(vaiTroName)) {
+            GiangVien giangVien = giangVienRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+            if (giangVien != null) {
+                if (taiKhoanRequest.getMaUser() != null) {
+                    giangVien.setMaGiangVien(taiKhoanRequest.getMaUser());
+                }
+                if (taiKhoanRequest.getChuyenNganh() != null) {
+                    giangVien.setChuyenNganh(taiKhoanRequest.getChuyenNganh());
+                }
+                if (taiKhoanRequest.getHocHam() != null) {
+                    giangVien.setHocHam(taiKhoanRequest.getHocHam());
+                }
+                if (taiKhoanRequest.getHocVi() != null) {
+                    giangVien.setHocVi(taiKhoanRequest.getHocVi());
+                }
+                giangVienRepository.save(giangVien);
+            }
+        } else if ("ROLE_QL".equals(vaiTroName)) {
+            Optional<QuanLy> quanLyInfoOpt = quanLyRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+            if (quanLyInfoOpt.isPresent()) {
+                QuanLy quanLyInfo = quanLyInfoOpt.get();
+                if (taiKhoanRequest.getMaUser() != null) {
+                    quanLyInfo.setMaQuanLy(taiKhoanRequest.getMaUser());
+                }
+                if (taiKhoanRequest.getChucVu() != null) {
+                    quanLyInfo.setChucVu(taiKhoanRequest.getChucVu());
+                }
+                quanLyRepository.save(quanLyInfo);
+            }
+        }
+        
+        return ResponseEntity.ok(new MessageResponse("Cập nhật tài khoản thành công"));
+    }
+    
+    // 5. Khóa/Mở khóa tài khoản
+    @PutMapping("/taikhoan/{id}/trangthai")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> toggleTaiKhoanStatus(@PathVariable String id, @RequestBody Map<String, String> request) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy tài khoản"));
+        }
+        
+        User user = userOpt.get();
+        String trangThaiStr = request.get("trangThai");
+        
+        if (trangThaiStr == null || trangThaiStr.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Trạng thái không được để trống"));
+        }
+        
+        try {
+            User.TrangThai trangThai = User.TrangThai.valueOf(trangThaiStr);
+            user.setTrangThai(trangThai);
+            userRepository.save(user);
+            
+            String message = trangThai == User.TrangThai.HoatDong ? 
+                "Tài khoản đã được kích hoạt" : "Tài khoản đã bị khóa";
+            
+            return ResponseEntity.ok(new MessageResponse(message));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Trạng thái không hợp lệ"));
+        }
+    }
+    
+    // 6. Xóa tài khoản
+    @DeleteMapping("/taikhoan/{id}")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> deleteTaiKhoan(@PathVariable String id) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+        
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new MessageResponse("Không tìm thấy tài khoản"));
+        }
+        
+        // Không cho phép xóa tài khoản của chính mình
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        if (userDetails.getId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MessageResponse("Không thể xóa tài khoản của chính mình"));
+        }
+        
+        // Tìm người dùng để xóa sau
+        Optional<NguoiDung> nguoiDungOpt = nguoiDungRepository.findByTaiKhoanId(id);
+        if (nguoiDungOpt.isPresent()) {
+            NguoiDung nguoiDung = nguoiDungOpt.get();
+            
+            // Xác định và xóa thực thể con dựa trên vai trò
+            String vaiTroName = nguoiDung.getVaiTro().getName();
+            if ("ROLE_SV".equals(vaiTroName)) {
+                SinhVien sinhVien = sinhVienRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+                if (sinhVien != null) {
+                    sinhVienRepository.delete(sinhVien);
+                }
+            } else if ("ROLE_GV".equals(vaiTroName)) {
+                GiangVien giangVien = giangVienRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+                if (giangVien != null) {
+                    giangVienRepository.delete(giangVien);
+                }
+            } else if ("ROLE_QL".equals(vaiTroName)) {
+                Optional<QuanLy> quanLyOpt = quanLyRepository.findByNguoiDungIdNguoiDung(nguoiDung.getIdNguoiDung());
+                if (quanLyOpt.isPresent()) {
+                    quanLyRepository.delete(quanLyOpt.get());
+                }
+            }
+            
+            // Xóa NguoiDung
+            nguoiDungRepository.delete(nguoiDung);
+        }
+        
+        // Xóa User
+        userRepository.deleteById(id);
+        
+        return ResponseEntity.ok(new MessageResponse("Tài khoản đã được xóa thành công"));
+    }
+} 

@@ -1,0 +1,798 @@
+/* Container chính */
+.container-fluid {
+    padding: 20px;
+    width: 1200px;
+    max-width: 100%;
+    margin: 0 auto;
+    min-height: 50px;
+}
+
+/* Card styles */
+.card {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+/* Navbar styling */
+.navbar-compact {
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    padding: 4px 10px !important;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 1200px;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.navbar-brand-sm {
+    font-size: 1.1rem !important;
+    padding: 5px !important;
+    height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.nav-link-sm {
+    padding: 5px 8px !important;
+    font-size: 0.9rem !important;
+    height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+/* Tab styling */
+.custom-tabs {
+    background-color: white;
+    border-bottom: 1px solid #dee2e6;
+    padding-top: 10px;
+    margin-bottom: 20px;
+    height: 45px !important;
+    min-height: 45px !important;
+    max-height: 45px !important;
+    display: flex;
+    align-items: center;
+    width: 1200px;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.custom-tabs .nav {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.custom-tabs .nav-item {
+    height: 100%;
+    flex: 1;
+}
+
+/* Base style for all nav-links */
+.nav-link, .custom-tabs .nav-item .nav-link, .card-header-tabs .nav-link, .nav-tabs .nav-link {
+    padding: 8px 16px;
+    border-radius: 5px 5px 0 0;
+    color: #000000 !important;
+    font-weight: 600;
+    margin-right: 2px;
+    border: 1px solid #dee2e6;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    background-color: #1D85E0;
+    text-align: center;
+    flex: 1;
+}
+
+/* Active tab styling */
+.nav-link.active, .custom-tabs .nav-item .nav-link.active, .card-header-tabs .nav-link.active, .nav-tabs .nav-link.active {
+    background-color: #ffffff !important;
+    color: #0055AA !important;
+    border: 1px solid #dee2e6;
+    border-bottom: 3px solid #0055AA;
+    font-weight: 700;
+}
+
+/* Hover styling */
+.nav-link:hover:not(.active), .custom-tabs .nav-item .nav-link:hover:not(.active), .card-header-tabs .nav-link:hover:not(.active), .nav-tabs .nav-link:hover:not(.active) {
+    background-color: #1665ab;
+    border-color: #1665ab;
+    color: #ffffff !important;
+}
+
+/* Card tabs styling - for MuonPhongManager */
+.card-header-tabs .nav-link {
+    color: #000000 !important;
+    background-color: #1D85E0;
+    border: 1px solid #dee2e6;
+    font-weight: 600;
+}
+
+.card-header-tabs .nav-link.active {
+    color: #0055AA !important;
+    background-color: #ffffff !important;
+    border-bottom: 3px solid #0055AA;
+    font-weight: 700;
+}
+
+.tabs-spacer {
+    height: 30px;
+}
+/* Table styling */
+.thongbao-table th {
+    background-color: #f8f9fa;
+    color: #495057;
+}
+
+.thongbao-table tr.chuadoc {
+    font-weight: bold;
+    background-color: #f8f9fa;
+}
+
+.thongbao-table tr.chuadoc td {
+    padding: 12px 8px;
+}
+
+.thongbao-table tr:hover {
+    background-color: #f1f8e9;
+}
+
+/* Timetable styles - nâng cấp */
+.schedule-container {
+  margin-bottom: 30px;
+  border: none !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  background-color: #fff;
+}
+
+.schedule-header {
+  background: linear-gradient(135deg, #1976d2, #2196f3) !important;
+  padding: 20px !important;
+  color: white;
+  border: none !important;
+}
+
+.schedule-title {
+  font-size: 1.7rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.5px;
+  color: #ffffff;
+}
+
+.week-range {
+  color: rgba(255, 255, 255, 1);
+  font-size: 1.1rem;
+  margin-top: 8px;
+  font-weight: 500;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.schedule-nav {
+  display: flex;
+}
+
+.week-nav-btn {
+  border-radius: 8px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 1.05rem;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.week-nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.schedule-table-container {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  background-color: white;
+  margin: 0;
+}
+
+.schedule-table th, 
+.schedule-table td {
+  border: 1px solid #e0e0e0;
+  padding: 10px;
+  text-align: center;
+  position: relative;
+}
+
+.period-header, .day-header {
+  background-color: #f5f5f5;
+  color: #333;
+  font-weight: 600;
+  padding: 12px !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.period-header {
+  width: 80px;
+  background-color: #f0f0f0;
+}
+
+.day-header {
+  background-color: #f5f5f5;
+}
+
+.current-day {
+  background-color: #e3f2fd !important;
+  color: #1976d2;
+  font-weight: 700;
+}
+
+.period-cell {
+  background-color: #f9f9f9;
+  font-weight: 500;
+  color: #555;
+  border-right: 1px solid #e0e0e0 !important;
+}
+
+.even-row {
+  background-color: #fafafa;
+}
+
+.odd-row {
+  background-color: #ffffff;
+}
+
+.schedule-cell {
+  background-color: #f0f8ff !important;
+  padding: 0 !important;
+  text-align: left !important;
+  vertical-align: top;
+  border: 1px solid #d0e1fd !important;
+  transition: all 0.2s ease;
+  cursor: default;
+  position: relative;
+  z-index: 1;
+}
+
+.schedule-cell:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  z-index: 20;
+}
+
+.current-day-cell {
+  background-color: #e3f2fd !important;
+  border-left: 3px solid #1976d2 !important;
+}
+
+.lesson-content {
+  padding: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.lesson-header {
+  margin-bottom: 10px;
+}
+
+.lesson-code {
+  font-size: 0.85rem;
+  padding: 5px 8px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.lesson-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+  margin-top: 5px;
+}
+
+.lesson-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lesson-info {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.info-icon {
+  color: #1976d2;
+  margin-right: 8px;
+  font-size: 1rem;
+}
+
+.view-students-btn {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+/* Student list modal styling */
+.student-list-header {
+  background: linear-gradient(135deg, #1976d2, #2196f3);
+  color: white;
+  border: none;
+}
+
+.student-list-header .modal-title {
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.student-list-header .btn-close {
+  background-color: rgba(255, 255, 255, 0.5);
+  opacity: 1;
+}
+
+.student-list-table th {
+  background-color: #f5f5f5;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Modal styling */
+.modal-header {
+    background-color: #f0f8ff;
+    border-bottom: 2px solid #3498db;
+}
+
+.modal-header .close {
+    color: white;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body label {
+    color: #1976D2;
+    min-width: 100px;
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.modal-body span {
+    color: #333;
+    font-size: 1rem;
+}
+
+.modal-body hr {
+    margin: 15px 0;
+    border-color: #e0e0e0;
+}
+
+.modal-footer {
+    border-top: 1px solid #e0e0e0;
+    padding: 15px 20px;
+}
+
+.modal-footer button {
+    min-width: 100px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* Left panel: Form gửi tin */
+.left-panel {
+    flex: 1;
+    padding: 20px;
+}
+
+.send-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.send-form select,
+.send-form textarea,
+.send-form button {
+    padding: 14px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.send-form textarea {
+    height: 150px;
+    resize: vertical;
+}
+
+.send-form button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.send-form button:hover {
+    background-color: #0056b3;
+}
+
+/* Right panel: Danh sách tin */
+.right-panel {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.right-panel .send {
+    background-color: #d1e7ff;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.right-panel .receive {
+    background-color: #ffeeba;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+/* Thông báo container */
+.thongbao-container {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.thongbao-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+}
+
+.thongbao-table th,
+.thongbao-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.thongbao-table button {
+    background-color: #008CBA;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+.thongbao-table button:hover {
+    background-color: #005f73;
+}
+
+.thongbao-table .chuadoc {
+    background: linear-gradient(to right, #ff928e, #ece7e7);
+    color: #000;
+}
+
+.thongbao-table .dadoc {
+    background: linear-gradient(to right, #b5d9de, #ffffff);
+    color: #000;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .container-fluid,
+    .navbar-compact,
+    .custom-tabs {
+        width: 100%;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 10px;
+        width: 100%;
+    }
+
+    .navbar-compact,
+    .custom-tabs {
+        width: 100%;
+    }
+
+    .schedule-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .schedule-header div {
+        margin-top: 10px;
+    }
+
+    .schedule-table th,
+    .schedule-table td {
+        padding: 5px;
+        font-size: 0.85rem;
+    }
+
+    .schedule-cell {
+        font-size: 0.75rem;
+    }
+
+    .left-panel,
+    .right-panel {
+        flex: 100%;
+        padding: 10px;
+    }
+
+    .send-form select,
+    .send-form textarea,
+    .send-form button {
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    .custom-tabs .nav-item .nav-link, 
+    .nav-link, 
+    .nav-tabs .nav-link,
+    .card-header-tabs .nav-link {
+        padding: 5px 10px;
+        font-size: 0.85rem;
+        color: #000000 !important;
+        background-color: #1D85E0;
+        border: 1px solid #dee2e6;
+        font-weight: 600;
+    }
+    
+    .custom-tabs .nav-item .nav-link.active,
+    .nav-link.active,
+    .nav-tabs .nav-link.active,
+    .card-header-tabs .nav-link.active {
+        background-color: #ffffff !important;
+        color: #0055AA !important;
+        border: 1px solid #dee2e6;
+        border-bottom: 3px solid #0055AA;
+        font-weight: 700;
+    }
+
+    .info-style {
+        font-size: 16px !important;
+    }
+    
+    .spacing0, .spacing1, .spacing2, .spacing3, .spacing4, .spacing5 {
+        margin-left: 10px;
+    }
+
+    .modal-body label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    
+    .modal-body span {
+        display: block;
+        padding-left: 10px;
+    }
+}
+
+.react-datepicker-wrapper {
+    display: block;
+    width: 100%;
+}
+
+.react-datepicker__input-container {
+    display: block;
+}
+
+.react-datepicker__input-container input {
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+
+.react-datepicker {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    border: 1px solid #ced4da;
+    border-radius: 0.3rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.react-datepicker__header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ced4da;
+}
+
+.react-datepicker__current-month {
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.5rem 0;
+}
+
+.react-datepicker__day--selected {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.react-datepicker__day:hover {
+    background-color: #e9ecef;
+}
+
+.react-datepicker__time-container {
+    border-left: 1px solid #ced4da;
+}
+
+.react-datepicker__time-list-item--selected {
+    background-color: #0d6efd !important;
+    color: white !important;
+}
+
+.react-datepicker__time-list-item:hover {
+    background-color: #e9ecef !important;
+}
+
+/* Modal styling for center placement */
+.modal-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100% - 1rem);
+}
+
+.modal-content {
+  margin: 0 auto;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Toast styling */
+.toast-container {
+  z-index: 9999;
+}
+
+.toast {
+  min-width: 250px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.toast-body {
+  padding: 12px 16px;
+}
+
+/* Card tabs container */
+.card-header-tabs {
+    width: 100%;
+    display: flex;
+}
+
+.nav-tabs {
+    width: 100%;
+    display: flex;
+}
+
+.nav-tabs .nav-item {
+    flex: 1;
+    text-align: center;
+}
+
+/* Adjust card header tabs for MuonPhongManager */
+.card > .card-header .nav {
+    display: flex;
+    width: 100%;
+}
+
+.card > .card-header .nav-item {
+    flex: 1;
+}
+
+.card > .card-header .nav-link {
+    width: 100%;
+    justify-content: center;
+}
+
+/* Customized styling for the notification tabs */
+.custom-tab-link {
+  border-radius: 8px 8px 0 0 !important;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 16px !important;
+  font-size: 0.95rem;
+  border: 1px solid #e0e0e0;
+  border-bottom: none;
+  background-color: #f5f5f5 !important;
+  color: #555 !important;
+}
+
+.custom-tab-link.active {
+  background-color: #ffffff !important;
+  color: #1D85E0 !important;
+  border-top: 3px solid #1D85E0 !important;
+  border-bottom: none;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+}
+
+.custom-tab-link:hover:not(.active) {
+  background-color: #e9f2fd !important;
+  color: #0d6efd !important;
+  border-color: #d0e0fc;
+}
+
+.custom-tab-link .badge {
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: normal;
+  font-size: 0.75rem;
+}
+
+.custom-tabs {
+  border-bottom: 1px solid #dee2e6;
+  padding: 0 10px;
+  margin-bottom: 20px;
+}
+
+.custom-tabs .nav-item {
+  margin-right: 5px;
+}
+
+/* Sửa lỗi dòng kẻ kỳ lạ */
+.even-row td, .odd-row td {
+  border-left: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
+}
+
+/* Thêm style cho cột thứ 2 để đảm bảo không có dòng kẻ kỳ lạ */
+.schedule-table td:nth-child(2) {
+  background-color: #ffffff;
+  border-left: 1px solid #e0e0e0;
+}
+
+/* Style cho các ô trống của thứ 2 (nơi xuất hiện dòng kẻ kỳ lạ) */
+.schedule-table td:nth-child(2):not(.schedule-cell) {
+  background-color: #f2f8ff;
+  border-left: 1px solid #e0e0e0;
+}
+
+/* Style riêng cho các ô trống của thứ 2 (nơi xuất hiện dòng kẻ kỳ lạ) */
+/* .monday-empty-cell {
+  background-color: #f2f8ff !important;
+  border-left: 1px solid #e0e0e0 !important;
+  border-right: 1px solid #e0e0e0 !important;
+} */

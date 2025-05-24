@@ -1,0 +1,351 @@
+:root {
+  font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  /* Chủ đề học tập */
+  --primary-color: #1e88e5; /* Xanh dương đậm - màu chính */
+  --secondary-color: #66bb6a; /* Xanh lá cây - màu phụ */
+  --accent-color: #8e24aa; /* Tím - màu điểm nhấn */
+  --warning-color: #f9a825; /* Vàng - màu cảnh báo */
+  --danger-color: #e53935; /* Đỏ - màu nguy hiểm */
+  --text-primary: #212121; /* Đen nhạt - văn bản chính */
+  --text-secondary: #757575; /* Xám - văn bản phụ */
+  --background-color: #f5f5f5; /* Xám nhạt - màu nền */
+  --card-color: #ffffff; /* Trắng - màu thẻ */
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  
+  color-scheme: light;
+  color: var(--text-primary);
+  background-color: var(--background-color);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #1565c0; /* Xanh dương đậm hơn */
+  text-decoration: underline;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--background-color);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--primary-color);
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+/* Card style */
+.card {
+  background-color: var(--card-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px var(--shadow-color);
+  transition: box-shadow 0.3s ease;
+  border: none !important;
+  margin-bottom: 1.5rem;
+}
+
+.card:hover {
+  box-shadow: 0 8px 12px var(--shadow-color);
+}
+
+.card-header {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+}
+
+/* Button style */
+.btn-primary {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background-color: #1565c0 !important;
+  border-color: #1565c0 !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+  border-radius: 6px !important;
+}
+
+.btn-secondary:hover, .btn-secondary:focus {
+  background-color: #43a047 !important;
+  border-color: #43a047 !important;
+}
+
+/* Navigation */
+.navbar {
+  box-shadow: 0 2px 4px var(--shadow-color);
+  background-color: var(--primary-color) !important;
+  padding: 0.5rem 1rem;
+}
+
+.navbar-brand {
+  color: white !important;
+  font-weight: 600;
+  font-size: 1.3rem;
+}
+
+.nav-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem !important;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover, .nav-link:focus {
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Form controls */
+.form-control {
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  padding: 0.6rem 0.75rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25);
+}
+
+/* Table styles */
+.table {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.table thead th {
+  background-color: var(--primary-color);
+  color: white;
+  border-bottom: none;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Login container */
+.login-container {
+  max-width: 400px;
+  margin: 3rem auto;
+  padding: 2rem;
+}
+
+/* Custom container */
+.custom-container {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 1rem 15px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .custom-container {
+    padding: 1rem 10px;
+  }
+  
+  .card {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Common utility classes */
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+.text-secondary {
+  color: var(--secondary-color) !important;
+}
+
+.text-accent {
+  color: var(--accent-color) !important;
+}
+
+.bg-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.bg-secondary {
+  background-color: var(--secondary-color) !important;
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eaeaea;
+}
+
+/* Thêm styles cho trang Home và Login */
+
+/* Hero section styles */
+.hero-section {
+  background-color: rgba(30, 136, 229, 0.05);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  color: var(--primary-color);
+}
+
+.section-title:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background-color: var(--primary-color);
+}
+
+/* Feature card styles */
+.feature-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: none;
+  border-radius: 12px;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Login card styles */
+.login-card {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.feature-list li {
+  margin-bottom: 0.75rem;
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.feature-list li:before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.about-card {
+  background-color: rgba(30, 136, 229, 0.03);
+  border: none;
+  border-radius: 12px;
+}
+
+/* Thêm các style mới cho form đăng nhập */
+
+/* Trang đăng nhập */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+/* Input styles - cải thiện kích thước */
+.login-card .form-control {
+  height: auto;
+  font-size: 1.1rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.login-card .form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.25rem rgba(30, 136, 229, 0.25);
+  transform: translateY(-2px);
+}
+
+.login-card .form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+/* Nút đăng nhập */
+.login-card .btn-primary {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 10px rgba(30, 136, 229, 0.3);
+  transition: all 0.3s ease;
+}
+
+.login-card .btn-primary:hover, 
+.login-card .btn-primary:focus {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(30, 136, 229, 0.4);
+}
+
+.login-card .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Card đăng nhập */
+.login-card {
+  border: none;
+  border-radius: 16px; 
+  overflow: hidden;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+.login-card .card-body {
+  padding: 2.5rem !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .login-card .card-body {
+    padding: 2rem 1.5rem !important;
+  }
+  
+  .login-card .form-control {
+    font-size: 1rem;
+    padding: 0.7rem 1rem;
+  }
+}

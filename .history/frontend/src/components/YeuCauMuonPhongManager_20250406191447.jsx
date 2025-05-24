@@ -1,0 +1,445 @@
+import React, { useState, useEffect } from "react";
+import { Container, Row, Col, Card, Table, Button, Form, Modal, Alert, Badge, Tabs, Tab } from "react-bootstrap";
+import axios from "axios";
+import authHeader from "../services/auth-header";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { 
+  faCheck, faTimes, faEye, faSearch, 
+  faFilter, faClipboardCheck, faClipboardList, faClipboardQuestion
+} from "@fortawesome/free-solid-svg-icons";
+import moment from "moment";
+import 'moment/locale/vi';
+
+const API_URL = "http://localhost:8080/api/quanly";
+
+const YeuCauMuonPhongManager = () => {
+  const [yeuCauList, setYeuCauList] = useState([]);
+  const [selectedYeuCau, setSelectedYeuCau] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [lyDo, setLyDo] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
+
+  // Lấy danh sách yêu cầu khi component được render
+  useEffect(() => {
+    fetchYeuCauList();
+  }, []);
+
+  // Tải tất cả yêu cầu
+  const fetchYeuCauList = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/yeucau`, { headers: authHeader() });
+      setYeuCauList(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách yêu cầu:", error);
+      setMessage("Không thể lấy danh sách yêu cầu. Vui lòng thử lại sau.");
+      setMessageType("danger");
+      setLoading(false);
+    }
+  };
+
+  // Lọc yêu cầu theo các tab
+  const getFilteredYeuCau = () => {
+    let filtered = [...yeuCauList];
+    
+    // Lọc theo tab đang chọn
+    if (activeTab === "pending") {
+      filtered = filtered.filter(yc => yc.trangThai === "DANGXULY");
+    } else if (activeTab === "approved") {
+      filtered = filtered.filter(yc => yc.trangThai === "DADUYET");
+    } else if (activeTab === "rejected") {
+      filtered = filtered.filter(yc => yc.trangThai === "KHONGDUOCDUYET");
+    }
+    
+    // Lọc theo từ khóa tìm kiếm
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(yc => 
+        (yc.nguoiMuon && yc.nguoiMuon.toLowerCase().includes(searchLower)) ||
+        (yc.phong && yc.phong.toLowerCase().includes(searchLower)) ||
+        (yc.viTri && yc.viTri.toLowerCase().includes(searchLower)) ||
+        (yc.mucDich && yc.mucDich.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return filtered;
+  };
+
+  // Xem chi tiết yêu cầu
+  const handleViewDetail = async (maYeuCau) => {
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        `${API_URL}/yeucau/${maYeuCau}`,
+        { headers: authHeader() }
+      );
+      setSelectedYeuCau(response.data);
+      setShowDetailModal(true);
+      setLoading(false);
+    } catch (error) {
+      console.error("Lỗi khi lấy chi tiết yêu cầu:", error);
+      setMessage("Không thể lấy chi tiết yêu cầu. Vui lòng thử lại sau.");
+      setMessageType("danger");
+      setLoading(false);
+    }
+  };
+
+  // Hiển thị modal từ chối
+  const handleShowRejectModal = (yeuCau) => {
+    setSelectedYeuCau(yeuCau);
+    setLyDo("");
+    setShowRejectModal(true);
+  };
+
+  // Duyệt yêu cầu
+  const handleApproveRequest = async (maYeuCau) => {
+    try {
+      const response = await axios.put(
+        `${API_URL}/yeucau/duyet/${maYeuCau}`,
+        {},
+        { headers: authHeader() }
+      );
+      setMessage("Đã duyệt yêu cầu thành công!");
+      setMessageType("success");
+      fetchYeuCauList();
+      
+      // Cập nhật thông tin chi tiết nếu đang xem
+      if (selectedYeuCau && selectedYeuCau.maYeuCau === maYeuCau) {
+        handleViewDetail(maYeuCau);
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Đã có lỗi xảy ra khi duyệt yêu cầu.");
+      setMessageType("danger");
+    }
+  };
+
+  // Từ chối yêu cầu
+  const handleRejectRequest = async () => {
+    if (!lyDo) {
+      setMessage("Vui lòng nhập lý do từ chối.");
+      setMessageType("danger");
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `${API_URL}/yeucau/tuchoi/${selectedYeuCau.maYeuCau}`,
+        { lyDo },
+        { headers: authHeader() }
+      );
+      setShowRejectModal(false);
+      setMessage("Đã từ chối yêu cầu thành công!");
+      setMessageType("success");
+      fetchYeuCauList();
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Đã có lỗi xảy ra khi từ chối yêu cầu.");
+      setMessageType("danger");
+    }
+  };
+
+  // Hiển thị trạng thái yêu cầu
+  const renderTrangThai = (trangThai) => {
+    switch (trangThai) {
+      case "DANGXULY":
+        return <Badge bg="warning">Đang xử lý</Badge>;
+      case "DADUYET":
+        return <Badge bg="success">Đã duyệt</Badge>;
+      case "KHONGDUOCDUYET":
+        return <Badge bg="danger">Không được duyệt</Badge>;
+      default:
+        return <Badge bg="secondary">{trangThai}</Badge>;
+    }
+  };
+
+  // Format thời gian
+  const formatDateTime = (dateTime) => {
+    if (!dateTime) return "N/A";
+    return moment(dateTime).format("DD/MM/YYYY HH:mm");
+  };
+
+  // Lấy số lượng yêu cầu theo trạng thái
+  const getCountByStatus = (status) => {
+    return yeuCauList.filter(yc => yc.trangThai === status).length;
+  };
+
+  return (
+    <Container fluid>
+      <Card className="mb-4">
+        <Card.Header className="bg-white pb-0">
+          <h5 className="mb-2">Quản lý yêu cầu mượn phòng</h5>
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(key) => setActiveTab(key)}
+            className="mb-0"
+          >
+            <Tab 
+              eventKey="all" 
+              title={
+                <span>
+                  <FontAwesomeIcon icon={faClipboardList} className="me-1" />
+                  Tất cả ({yeuCauList.length})
+                </span>
+              }
+            />
+            <Tab 
+              eventKey="pending" 
+              title={
+                <span>
+                  <FontAwesomeIcon icon={faClipboardQuestion} className="me-1" />
+                  Đang xử lý ({getCountByStatus("DANGXULY")})
+                </span>
+              }
+            />
+            <Tab 
+              eventKey="approved" 
+              title={
+                <span>
+                  <FontAwesomeIcon icon={faClipboardCheck} className="me-1" />
+                  Đã duyệt ({getCountByStatus("DADUYET")})
+                </span>
+              }
+            />
+            <Tab 
+              eventKey="rejected" 
+              title={
+                <span>
+                  <FontAwesomeIcon icon={faTimes} className="me-1" />
+                  Từ chối ({getCountByStatus("KHONGDUOCDUYET")})
+                </span>
+              }
+            />
+          </Tabs>
+        </Card.Header>
+        <Card.Body>
+          {message && (
+            <Alert variant={messageType} onClose={() => setMessage("")} dismissible>
+              {message}
+            </Alert>
+          )}
+          
+          <Row className="mb-3">
+            <Col md={6}>
+              <Form.Group className="mb-0">
+                <div className="input-group">
+                  <span className="input-group-text">
+                    <FontAwesomeIcon icon={faSearch} />
+                  </span>
+                  <Form.Control
+                    type="text"
+                    placeholder="Tìm kiếm theo người mượn, phòng, vị trí, mục đích..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </Form.Group>
+            </Col>
+          </Row>
+          
+          <div className="table-responsive">
+            <Table striped hover className="align-middle">
+              <thead>
+                <tr>
+                  <th>Mã YC</th>
+                  <th>Người mượn</th>
+                  <th>Phòng</th>
+                  <th>Thời gian mượn</th>
+                  <th>Thời gian trả</th>
+                  <th>Mục đích</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="text-center">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : getFilteredYeuCau().length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center">
+                      Không có yêu cầu nào
+                    </td>
+                  </tr>
+                ) : (
+                  getFilteredYeuCau().map((yeuCau) => (
+                    <tr key={yeuCau.maYeuCau}>
+                      <td>{yeuCau.maYeuCau}</td>
+                      <td>{yeuCau.nguoiMuon}</td>
+                      <td>
+                        {yeuCau.phong}
+                        <div className="small text-muted">{yeuCau.viTri}</div>
+                      </td>
+                      <td>{formatDateTime(yeuCau.thoiGianMuon)}</td>
+                      <td>{formatDateTime(yeuCau.thoiGianTra)}</td>
+                      <td>
+                        <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {yeuCau.mucDich}
+                        </div>
+                      </td>
+                      <td>{renderTrangThai(yeuCau.trangThai)}</td>
+                      <td>
+                        <Button 
+                          variant="outline-info" 
+                          size="sm" 
+                          className="me-1" 
+                          title="Xem chi tiết"
+                          onClick={() => handleViewDetail(yeuCau.maYeuCau)}
+                        >
+                          <FontAwesomeIcon icon={faEye} />
+                        </Button>
+                        
+                        {yeuCau.trangThai === "DANGXULY" && (
+                          <>
+                            <Button 
+                              variant="outline-success" 
+                              size="sm" 
+                              className="me-1"
+                              title="Duyệt yêu cầu"
+                              onClick={() => handleApproveRequest(yeuCau.maYeuCau)}
+                            >
+                              <FontAwesomeIcon icon={faCheck} />
+                            </Button>
+                            <Button 
+                              variant="outline-danger" 
+                              size="sm"
+                              title="Từ chối yêu cầu"
+                              onClick={() => handleShowRejectModal(yeuCau)}
+                            >
+                              <FontAwesomeIcon icon={faTimes} />
+                            </Button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </Table>
+          </div>
+        </Card.Body>
+      </Card>
+
+      {/* Modal Xem chi tiết yêu cầu */}
+      <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Chi tiết yêu cầu mượn phòng #{selectedYeuCau?.maYeuCau}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedYeuCau && (
+            <>
+              <Row className="mb-4">
+                <Col md={6}>
+                  <h6 className="text-muted mb-2">Thông tin người mượn</h6>
+                  <p className="mb-1"><strong>Họ tên:</strong> {selectedYeuCau.nguoiMuon}</p>
+                  <p className="mb-1"><strong>ID:</strong> {selectedYeuCau.idNguoiMuon}</p>
+                </Col>
+                <Col md={6}>
+                  <h6 className="text-muted mb-2">Thông tin phòng</h6>
+                  <p className="mb-1"><strong>Mã phòng:</strong> {selectedYeuCau.maPhong}</p>
+                  <p className="mb-1"><strong>Vị trí:</strong> {selectedYeuCau.viTri}</p>
+                  <p className="mb-1"><strong>Loại phòng:</strong> {selectedYeuCau.loaiPhong}</p>
+                </Col>
+              </Row>
+              
+              <Row className="mb-4">
+                <Col md={6}>
+                  <h6 className="text-muted mb-2">Thời gian</h6>
+                  <p className="mb-1"><strong>Mượn:</strong> {formatDateTime(selectedYeuCau.thoiGianMuon)}</p>
+                  <p className="mb-1"><strong>Trả:</strong> {formatDateTime(selectedYeuCau.thoiGianTra)}</p>
+                </Col>
+                <Col md={6}>
+                  <h6 className="text-muted mb-2">Trạng thái</h6>
+                  <p className="mb-1">
+                    <strong>Trạng thái:</strong> {renderTrangThai(selectedYeuCau.trangThai)}
+                  </p>
+                  {selectedYeuCau.nguoiDuyet && (
+                    <p className="mb-1"><strong>Người duyệt:</strong> {selectedYeuCau.nguoiDuyet}</p>
+                  )}
+                </Col>
+              </Row>
+              
+              <div className="mb-3">
+                <h6 className="text-muted mb-2">Mục đích sử dụng</h6>
+                <p>{selectedYeuCau.mucDich}</p>
+              </div>
+              
+              {selectedYeuCau.lyDo && (
+                <div className="mb-3">
+                  <h6 className="text-muted mb-2">Lý do từ chối</h6>
+                  <p className="text-danger">{selectedYeuCau.lyDo}</p>
+                </div>
+              )}
+              
+              {selectedYeuCau.trangThai === "DANGXULY" && (
+                <div className="d-flex mt-4">
+                  <Button 
+                    variant="success" 
+                    className="me-2"
+                    onClick={() => handleApproveRequest(selectedYeuCau.maYeuCau)}
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="me-1" /> Duyệt yêu cầu
+                  </Button>
+                  <Button 
+                    variant="danger"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      handleShowRejectModal(selectedYeuCau);
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="me-1" /> Từ chối yêu cầu
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDetailModal(false)}>
+            Đóng
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal Từ chối yêu cầu */}
+      <Modal show={showRejectModal} onHide={() => setShowRejectModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Từ chối yêu cầu mượn phòng</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Bạn sắp từ chối yêu cầu mượn phòng của <strong>{selectedYeuCau?.nguoiMuon}</strong> cho phòng <strong>{selectedYeuCau?.phong}</strong>.</p>
+          <Form.Group className="mb-3">
+            <Form.Label>Lý do từ chối <span className="text-danger">*</span></Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={lyDo}
+              onChange={(e) => setLyDo(e.target.value)}
+              placeholder="Vui lòng nhập lý do từ chối yêu cầu..."
+              required
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowRejectModal(false)}>
+            Hủy
+          </Button>
+          <Button variant="danger" onClick={handleRejectRequest}>
+            Từ chối yêu cầu
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
+  );
+};
+
+export default YeuCauMuonPhongManager; 

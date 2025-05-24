@@ -1,0 +1,601 @@
+-- STORED PROCEDURES, TRIGGERS, FUNCTIONS CHO SINH VIÊN
+
+-- 1. STORED PROCEDURES
+
+-- 1.1 Đăng nhập sinh viên
+DELIMITER //
+CREATE PROCEDURE sp_SinhVien_DangNhap(
+    IN p_maSV VARCHAR(10),
+    IN p_matKhau VARCHAR(255)
+)
+BEGIN
+    DECLARE v_idNguoiDung VARCHAR(36);
+    DECLARE v_matKhauHash VARCHAR(255);
+    DECLARE v_trangThai VARCHAR(20);
+    
+    -- Lấy thông tin đăng nhập từ SinhVien, NguoiDung và TaiKhoan
+    SELECT 
+        u.MatKhau, 
+        u.TrangThai, 
+        nd.IDNguoiDung 
+    INTO 
+        v_matKhauHash, 
+        v_trangThai, 
+        v_idNguoiDung
+    FROM 
+        SinhVien sv
+    JOIN 
+        NguoiDung nd ON sv.IDNguoiDung = nd.IDNguoiDung
+    JOIN 
+        TaiKhoan u ON nd.IDTaiKhoan = u.ID
+    WHERE 
+        sv.MaSV = p_maSV;
+        
+    -- Kiểm tra tài khoản tồn tại
+    IF v_matKhauHash IS NULL THEN
+        SELECT 'Tài khoản không tồn tại' AS Message, FALSE AS Success;
+    -- Kiểm tra trạng thái
+    ELSEIF v_trangThai = 'Khoa' THEN
+        SELECT 'Tài khoản đã bị khóa' AS Message, FALSE AS Success;
+    -- Kiểm tra mật khẩu
+    ELSEIF v_matKhauHash = p_matKhau THEN
+        -- Cập nhật thời gian đăng nhập
+        UPDATE TaiKhoan 
+        SET ThoiGianDangNhapCuoi = NOW() 
+        WHERE ID IN (SELECT IDTaiKhoan FROM NguoiDung WHERE IDNguoiDung = v_idNguoiDung);
+        
+        -- Trả về thông tin sinh viên
+        SELECT 
+            sv.MaSV,
+            nd.IDNguoiDung,
+            nd.HoTen,
+            nd.Email,
+            nd.LienHe,
+            nd.GioiTinh,
+            l.MaLop,
+            l.TenLop,
+            TRUE AS Success
+        FROM 
+            SinhVien sv
+        JOIN 
+            NguoiDung nd ON sv.IDNguoiDung = nd.IDNguoiDung
+        LEFT JOIN 
+            LopHoc l ON sv.MaLop = l.MaLop
+        WHERE 
+            nd.IDNguoiDung = v_idNguoiDung;
+    ELSE
+        SELECT 'Mật khẩu không chính xác' AS Message, FALSE AS Success;
+    END IF;
+END //
+DELIMITER ;
+
+-- 1.2 Lấy danh sách phòng trống
+DELIMITER //
+CREATE PROCEDURE sp_SinhVien_TimPhongTrong(
+    IN p_thoiGianMuon DATETIME,
+    IN p_thoiGianTra DATETIME,
+    IN p_soChoNgoi INT,
+    IN p_loaiPhong VARCHAR(20)
+)
+BEGIN
+    -- Lấy danh sách phòng phù hợp với điều kiện tìm kiếm
+    SELECT 
+        p.*
+    FROM 
+        Phong p
+    WHERE 
+        p.TrangThai != 'BAOTRI'
+        AND (p_soChoNgoi IS NULL OR p.SucChua >= p_soChoNgoi)
+        AND (p_loaiPhong IS NULL OR p.LoaiPhong = p_loaiPhong)
+        -- Không có yêu cầu mượn phòng nào trùng thời gian
+        AND NOT EXISTS (
+            SELECT 1 
+            FROM YeuCauMuonPhong y 
+            WHERE y.MaPhong = p.MaPhong
+            AND y.TrangThai IN ('DADUYET', 'DANGXULY')
+            AND y.ThoiGianMuon < p_thoiGianTra 
+            AND y.ThoiGianTra > p_thoiGianMuon
+        )
+        -- Không có lịch học nào trùng thời gian
+        AND NOT EXISTS (
+            SELECT 1
+            FROM ThoiKhoaBieu tkb
+            WHERE tkb.MaPhong = p.MaPhong
+            AND DATE(tkb.NgayHoc) = DATE(p_thoiGianMuon)
+            AND (
+                (HOUR(p_thoiGianMuon) * 60 + MINUTE(p_thoiGianMuon)) < (tkb.TietKetThuc * 45)
+                AND (HOUR(p_thoiGianTra) * 60 + MINUTE(p_thoiGianTra)) > (tkb.TietBatDau * 45)
+            )
+        );
+END //
+DELIMITER ;
+
+-- 1.3 Gửi yêu cầu mượn phòng
+DELIMITER //
+CREATE PROCEDURE sp_SinhVien_GuiYeuCauMuonPhong(
+    IN p_maSV VARCHAR(10),
+    IN p_maPhong VARCHAR(10),
+    IN p_thoiGianMuon DATETIME,
+    IN p_thoiGianTra DATETIME,
+    IN p_mucDich VARCHAR(255),
+    IN p_lyDo VARCHAR(500)
+)
+BEGIN
+    DECLARE v_idNguoiDung VARCHAR(36);
+    DECLARE v_conflict BOOLEAN DEFAULT FALSE;
+    
+    -- Lấy IDNguoiDung từ MaSV
+    SELECT IDNguoiDung INTO v_idNguoiDung
+    FROM SinhVien
+    WHERE MaSV = p_maSV;
+    
+    -- Kiểm tra xung đột lịch cho người mượn
+    IF EXISTS (
+        SELECT 1 
+        FROM YeuCauMuonPhong y
+        JOIN SinhVien sv ON y.IDNguoiMuon = sv.IDNguoiDung
+        WHERE sv.MaSV = p_maSV
+        AND y.TrangThai IN ('DADUYET', 'DANGXULY')
+        AND y.ThoiGianMuon < p_thoiGianTra 
+        AND y.ThoiGianTra > p_thoiGianMuon
+    ) THEN
+        SET v_conflict = TRUE;
+        SELECT 'Bạn đã có yêu cầu mượn phòng trong khoảng thời gian này' AS Message, FALSE AS Success;
+    END IF;
+    
+    -- Kiểm tra xung đột lịch cho phòng
+    IF NOT v_conflict AND EXISTS (
+        SELECT 1 
+        FROM YeuCauMuonPhong y
+        WHERE y.MaPhong = p_maPhong
+        AND y.TrangThai IN ('DADUYET', 'DANGXULY')
+        AND y.ThoiGianMuon < p_thoiGianTra 
+        AND y.ThoiGianTra > p_thoiGianMuon
+    ) THEN
+        SET v_conflict = TRUE;
+        SELECT 'Phòng đã được đặt trong khoảng thời gian này' AS Message, FALSE AS Success;
+    END IF;
+    
+    -- Kiểm tra xung đột với thời khóa biểu
+    IF NOT v_conflict AND EXISTS (
+        SELECT 1
+        FROM ThoiKhoaBieu tkb
+        WHERE tkb.MaPhong = p_maPhong
+        AND DATE(tkb.NgayHoc) = DATE(p_thoiGianMuon)
+        AND (
+            (HOUR(p_thoiGianMuon) * 60 + MINUTE(p_thoiGianMuon)) < (tkb.TietKetThuc * 45)
+            AND (HOUR(p_thoiGianTra) * 60 + MINUTE(p_thoiGianTra)) > (tkb.TietBatDau * 45)
+        )
+    ) THEN
+        SET v_conflict = TRUE;
+        SELECT 'Phòng đã có lịch học trong khoảng thời gian này' AS Message, FALSE AS Success;
+    END IF;
+    
+    -- Nếu không có xung đột, tạo yêu cầu
+    IF NOT v_conflict THEN
+        INSERT INTO YeuCauMuonPhong (
+            IDNguoiMuon,
+            MaPhong,
+            ThoiGianMuon,
+            ThoiGianTra,
+            MucDich,
+            LyDo,
+            TrangThai,
+            ThoiGianYeuCau
+        )
+        VALUES (
+            v_idNguoiDung,
+            p_maPhong,
+            p_thoiGianMuon,
+            p_thoiGianTra,
+            p_mucDich,
+            p_lyDo,
+            'DANGXULY',
+            NOW()
+        );
+        
+        SELECT 'Gửi yêu cầu mượn phòng thành công' AS Message, TRUE AS Success, LAST_INSERT_ID() AS MaYeuCau;
+    END IF;
+END //
+DELIMITER ;
+
+-- 1.4 Hủy yêu cầu mượn phòng
+DELIMITER //
+CREATE PROCEDURE sp_SinhVien_HuyYeuCau(
+    IN p_maSV VARCHAR(10),
+    IN p_maYeuCau INT
+)
+BEGIN
+    DECLARE v_idNguoiDung VARCHAR(36);
+    DECLARE v_trangThai VARCHAR(20);
+    DECLARE v_thoiGianMuon DATETIME;
+    
+    -- Lấy IDNguoiDung từ MaSV
+    SELECT IDNguoiDung INTO v_idNguoiDung
+    FROM SinhVien
+    WHERE MaSV = p_maSV;
+    
+    -- Lấy thông tin yêu cầu
+    SELECT TrangThai, ThoiGianMuon 
+    INTO v_trangThai, v_thoiGianMuon
+    FROM YeuCauMuonPhong
+    WHERE MaYeuCau = p_maYeuCau AND IDNguoiMuon = v_idNguoiDung;
+    
+    -- Kiểm tra yêu cầu tồn tại
+    IF v_trangThai IS NULL THEN
+        SELECT 'Không tìm thấy yêu cầu hoặc bạn không có quyền hủy' AS Message, FALSE AS Success;
+    -- Kiểm tra trạng thái yêu cầu
+    ELSEIF v_trangThai = 'DADUYET' AND v_thoiGianMuon <= NOW() THEN
+        SELECT 'Không thể hủy yêu cầu đã được duyệt và đã bắt đầu thời gian mượn' AS Message, FALSE AS Success;
+    ELSE
+        -- Cập nhật trạng thái yêu cầu
+        UPDATE YeuCauMuonPhong
+        SET TrangThai = 'KHONGDUOCDUYET', 
+            LyDo = 'Hủy bởi người mượn'
+        WHERE MaYeuCau = p_maYeuCau;
+        
+        SELECT 'Hủy yêu cầu mượn phòng thành công' AS Message, TRUE AS Success;
+    END IF;
+END //
+DELIMITER ;
+
+-- 1.5 Lấy danh sách yêu cầu mượn phòng của sinh viên
+DELIMITER //
+CREATE PROCEDURE sp_SinhVien_YeuCauMuonPhong(
+    IN p_maSV VARCHAR(10),
+    IN p_trangThai VARCHAR(20)
+)
+BEGIN
+    DECLARE v_idNguoiDung VARCHAR(36);
+    
+    -- Lấy IDNguoiDung từ MaSV
+    SELECT IDNguoiDung INTO v_idNguoiDung
+    FROM SinhVien
+    WHERE MaSV = p_maSV;
+    
+    -- Lấy danh sách yêu cầu mượn phòng
+    SELECT 
+        y.MaYeuCau,
+        p.MaPhong,
+        p.TenPhong,
+        p.ViTri,
+        p.LoaiPhong,
+        y.ThoiGianMuon,
+        y.ThoiGianTra,
+        y.MucDich,
+        y.LyDo,
+        y.TrangThai,
+        y.ThoiGianYeuCau,
+        IFNULL(nd.HoTen, 'Chưa duyệt') AS NguoiDuyet
+    FROM 
+        YeuCauMuonPhong y
+    JOIN 
+        Phong p ON y.MaPhong = p.MaPhong
+    LEFT JOIN 
+        NguoiDung nd ON y.IDNguoiDuyet = nd.IDNguoiDung
+    WHERE 
+        y.IDNguoiMuon = v_idNguoiDung
+        AND (p_trangThai IS NULL OR y.TrangThai = p_trangThai)
+    ORDER BY 
+        y.ThoiGianYeuCau DESC;
+END //
+DELIMITER ;
+
+-- 1.6 Gửi phản hồi về phòng học
+DELIMITER //
+CREATE PROCEDURE sp_SinhVien_GuiPhanHoi(
+    IN p_maSV VARCHAR(10),
+    IN p_maLichSu INT,
+    IN p_danhGia INT,
+    IN p_nhanXet VARCHAR(500)
+)
+BEGIN
+    DECLARE v_idNguoiDung VARCHAR(36);
+    DECLARE v_exists BOOLEAN;
+    
+    -- Lấy IDNguoiDung từ MaSV
+    SELECT IDNguoiDung INTO v_idNguoiDung
+    FROM SinhVien
+    WHERE MaSV = p_maSV;
+    
+    -- Kiểm tra lịch sử tồn tại và thuộc về sinh viên này
+    SELECT COUNT(*) > 0 INTO v_exists
+    FROM LichSuMuonPhong ls
+    JOIN YeuCauMuonPhong y ON ls.MaYeuCau = y.MaYeuCau
+    WHERE ls.MaLichSu = p_maLichSu AND y.IDNguoiMuon = v_idNguoiDung;
+    
+    IF NOT v_exists THEN
+        SELECT 'Không tìm thấy lịch sử mượn phòng hoặc bạn không có quyền đánh giá' AS Message, FALSE AS Success;
+    ELSE
+        -- Kiểm tra đã gửi phản hồi chưa
+        IF EXISTS (SELECT 1 FROM PhanHoi WHERE MaLichSu = p_maLichSu) THEN
+            -- Cập nhật phản hồi nếu đã tồn tại
+            UPDATE PhanHoi
+            SET DanhGia = p_danhGia,
+                NhanXet = p_nhanXet,
+                ThoiGian = NOW()
+            WHERE MaLichSu = p_maLichSu;
+        ELSE
+            -- Thêm phản hồi mới
+            INSERT INTO PhanHoi (
+                MaLichSu,
+                DanhGia,
+                NhanXet,
+                ThoiGian
+            )
+            VALUES (
+                p_maLichSu,
+                p_danhGia,
+                p_nhanXet,
+                NOW()
+            );
+        END IF;
+        
+        SELECT 'Gửi phản hồi thành công' AS Message, TRUE AS Success;
+    END IF;
+END //
+DELIMITER ;
+
+-- 1.7 Đánh dấu thông báo đã đọc
+DELIMITER //
+CREATE PROCEDURE sp_SinhVien_DanhDauThongBaoDaDoc(
+    IN p_idNguoiDung VARCHAR(36),
+    IN p_idThongBao INT
+)
+BEGIN
+    DECLARE v_idThongBaoNhan INT;
+    
+    -- Lấy ID thông báo nhận
+    SELECT ID INTO v_idThongBaoNhan
+    FROM ThongBaoNhan
+    WHERE IDTB = p_idThongBao
+      AND IDNguoiNhan = p_idNguoiDung;
+      
+    IF v_idThongBaoNhan IS NULL THEN
+        SELECT 'Không tìm thấy thông báo' AS Message, FALSE AS Success;
+    ELSE
+        -- Cập nhật trạng thái thông báo
+        UPDATE ThongBaoNhan
+        SET TrangThai = 'DADOC'
+        WHERE ID = v_idThongBaoNhan;
+        
+        SELECT 'Đã đánh dấu thông báo là đã đọc' AS Message, TRUE AS Success;
+    END IF;
+END //
+DELIMITER ;
+
+-- 2. TRIGGERS
+
+-- 2.1 Cập nhật trạng thái phòng khi duyệt yêu cầu mượn
+DELIMITER //
+CREATE TRIGGER trg_YeuCauMuonPhong_AfterUpdate
+AFTER UPDATE ON YeuCauMuonPhong
+FOR EACH ROW
+BEGIN
+    -- Nếu trạng thái chuyển từ đang xử lý sang đã duyệt
+    IF OLD.TrangThai = 'DANGXULY' AND NEW.TrangThai = 'DADUYET' THEN
+        -- Tạo lịch sử mượn phòng
+        INSERT INTO LichSuMuonPhong (
+            MaYeuCau,
+            ThoiGianMuon,
+            ThoiGianTraDuKien,
+            TrangThaiTra
+        )
+        VALUES (
+            NEW.MaYeuCau,
+            NEW.ThoiGianMuon,
+            NEW.ThoiGianTra,
+            'DungHan'
+        );
+        
+        -- Cập nhật trạng thái phòng nếu thời gian mượn là hiện tại
+        IF NOW() BETWEEN NEW.ThoiGianMuon AND NEW.ThoiGianTra THEN
+            UPDATE Phong
+            SET TrangThai = 'DANGSUDUNG'
+            WHERE MaPhong = NEW.MaPhong;
+        END IF;
+    END IF;
+END //
+DELIMITER ;
+
+-- 2.2 Tự động cập nhật trạng thái phòng khi trả phòng
+DELIMITER //
+CREATE TRIGGER trg_LichSuMuonPhong_AfterUpdate
+AFTER UPDATE ON LichSuMuonPhong
+FOR EACH ROW
+BEGIN
+    DECLARE v_maPhong VARCHAR(10);
+    
+    -- Lấy mã phòng từ yêu cầu mượn phòng
+    SELECT MaPhong INTO v_maPhong
+    FROM YeuCauMuonPhong
+    WHERE MaYeuCau = NEW.MaYeuCau;
+    
+    -- Nếu thời gian trả thực tế được cập nhật
+    IF OLD.ThoiGianTraThucTe IS NULL AND NEW.ThoiGianTraThucTe IS NOT NULL THEN
+        -- Kiểm tra các yêu cầu phòng đang sử dụng
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM LichSuMuonPhong ls
+            JOIN YeuCauMuonPhong y ON ls.MaYeuCau = y.MaYeuCau
+            WHERE y.MaPhong = v_maPhong 
+              AND ls.MaLichSu != NEW.MaLichSu
+              AND ls.ThoiGianTraThucTe IS NULL
+              AND NOW() BETWEEN y.ThoiGianMuon AND y.ThoiGianTra
+        ) THEN
+            -- Cập nhật trạng thái phòng về trống
+            UPDATE Phong
+            SET TrangThai = 'TRONG'
+            WHERE MaPhong = v_maPhong;
+        END IF;
+    END IF;
+END //
+DELIMITER ;
+
+-- 2.3 Tự động thông báo khi yêu cầu được duyệt/từ chối
+DELIMITER //
+CREATE TRIGGER trg_YeuCauMuonPhong_ThongBao
+AFTER UPDATE ON YeuCauMuonPhong
+FOR EACH ROW
+BEGIN
+    DECLARE v_idThongBao INT;
+    DECLARE v_tieuDe VARCHAR(100);
+    DECLARE v_noiDung VARCHAR(500);
+    
+    -- Chuẩn bị nội dung thông báo
+    IF NEW.TrangThai = 'DADUYET' AND OLD.TrangThai != 'DADUYET' THEN
+        SET v_tieuDe = 'Yêu cầu mượn phòng đã được duyệt';
+        SET v_noiDung = CONCAT('Yêu cầu mượn phòng ', NEW.MaPhong, 
+                              ' từ ', DATE_FORMAT(NEW.ThoiGianMuon, '%d/%m/%Y %H:%i'), 
+                              ' đến ', DATE_FORMAT(NEW.ThoiGianTra, '%d/%m/%Y %H:%i'), 
+                              ' đã được duyệt.');
+    ELSEIF NEW.TrangThai = 'KHONGDUOCDUYET' AND OLD.TrangThai != 'KHONGDUOCDUYET' THEN
+        SET v_tieuDe = 'Yêu cầu mượn phòng đã bị từ chối';
+        SET v_noiDung = CONCAT('Yêu cầu mượn phòng ', NEW.MaPhong, 
+                              ' từ ', DATE_FORMAT(NEW.ThoiGianMuon, '%d/%m/%Y %H:%i'), 
+                              ' đến ', DATE_FORMAT(NEW.ThoiGianTra, '%d/%m/%Y %H:%i'), 
+                              ' đã bị từ chối. Lý do: ', IFNULL(NEW.LyDo, 'Không có lý do.'));
+    END IF;
+    
+    -- Gửi thông báo nếu trạng thái thay đổi
+    IF v_tieuDe IS NOT NULL THEN
+        -- Tạo thông báo gửi
+        INSERT INTO ThongBaoGui (
+            IDNguoiGui,
+            TieuDe,
+            NoiDung,
+            ThoiGian
+        )
+        VALUES (
+            NEW.IDNguoiDuyet,
+            v_tieuDe,
+            v_noiDung,
+            NOW()
+        );
+        
+        SET v_idThongBao = LAST_INSERT_ID();
+        
+        -- Tạo thông báo nhận
+        INSERT INTO ThongBaoNhan (
+            IDTB,
+            IDNguoiNhan,
+            TrangThai
+        )
+        VALUES (
+            v_idThongBao,
+            NEW.IDNguoiMuon,
+            'CHUADOC'
+        );
+    END IF;
+END //
+DELIMITER ;
+
+-- 3. FUNCTIONS
+
+-- 3.1 Kiểm tra xem sinh viên có thể mượn phòng trong khoảng thời gian cụ thể không
+DELIMITER //
+CREATE FUNCTION fn_SinhVien_KiemTraCoThemuon(
+    p_maSV VARCHAR(10),
+    p_maPhong VARCHAR(10),
+    p_thoiGianMuon DATETIME,
+    p_thoiGianTra DATETIME
+) RETURNS BOOLEAN
+DETERMINISTIC
+BEGIN
+    DECLARE v_idNguoiDung VARCHAR(36);
+    DECLARE v_conflict BOOLEAN DEFAULT FALSE;
+    
+    -- Lấy IDNguoiDung từ MaSV
+    SELECT IDNguoiDung INTO v_idNguoiDung
+    FROM SinhVien
+    WHERE MaSV = p_maSV;
+    
+    -- Kiểm tra xung đột lịch cho người mượn
+    IF EXISTS (
+        SELECT 1 
+        FROM YeuCauMuonPhong y
+        WHERE y.IDNguoiMuon = v_idNguoiDung
+        AND y.TrangThai IN ('DADUYET', 'DANGXULY')
+        AND y.ThoiGianMuon < p_thoiGianTra 
+        AND y.ThoiGianTra > p_thoiGianMuon
+    ) THEN
+        SET v_conflict = TRUE;
+    END IF;
+    
+    -- Kiểm tra xung đột lịch cho phòng
+    IF NOT v_conflict AND EXISTS (
+        SELECT 1 
+        FROM YeuCauMuonPhong y
+        WHERE y.MaPhong = p_maPhong
+        AND y.TrangThai IN ('DADUYET', 'DANGXULY')
+        AND y.ThoiGianMuon < p_thoiGianTra 
+        AND y.ThoiGianTra > p_thoiGianMuon
+    ) THEN
+        SET v_conflict = TRUE;
+    END IF;
+    
+    -- Kiểm tra xung đột với thời khóa biểu
+    IF NOT v_conflict AND EXISTS (
+        SELECT 1
+        FROM ThoiKhoaBieu tkb
+        WHERE tkb.MaPhong = p_maPhong
+        AND DATE(tkb.NgayHoc) = DATE(p_thoiGianMuon)
+        AND (
+            (HOUR(p_thoiGianMuon) * 60 + MINUTE(p_thoiGianMuon)) < (tkb.TietKetThuc * 45)
+            AND (HOUR(p_thoiGianTra) * 60 + MINUTE(p_thoiGianTra)) > (tkb.TietBatDau * 45)
+        )
+    ) THEN
+        SET v_conflict = TRUE;
+    END IF;
+    
+    RETURN NOT v_conflict;
+END //
+DELIMITER ;
+
+-- 3.2 Đếm số lần sinh viên mượn phòng trong một khoảng thời gian
+DELIMITER //
+CREATE FUNCTION fn_SinhVien_SoLanMuonPhong(
+    p_maSV VARCHAR(10),
+    p_tuNgay DATE,
+    p_denNgay DATE
+) RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE v_soLan INT;
+    DECLARE v_idNguoiDung VARCHAR(36);
+    
+    -- Lấy IDNguoiDung từ MaSV
+    SELECT IDNguoiDung INTO v_idNguoiDung
+    FROM SinhVien
+    WHERE MaSV = p_maSV;
+    
+    -- Đếm số lần mượn phòng thành công
+    SELECT COUNT(*) INTO v_soLan
+    FROM YeuCauMuonPhong y
+    WHERE y.IDNguoiMuon = v_idNguoiDung
+    AND y.TrangThai = 'DADUYET'
+    AND DATE(y.ThoiGianMuon) BETWEEN p_tuNgay AND p_denNgay;
+    
+    RETURN v_soLan;
+END //
+DELIMITER ;
+
+-- 3.3 Đánh giá trung bình của một phòng
+DELIMITER //
+CREATE FUNCTION fn_DanhGiaTrungBinhPhong(
+    p_maPhong VARCHAR(10)
+) RETURNS DECIMAL(3,2)
+DETERMINISTIC
+BEGIN
+    DECLARE v_danhGiaTrungBinh DECIMAL(3,2);
+    
+    -- Tính điểm đánh giá trung bình của phòng
+    SELECT AVG(ph.DanhGia) INTO v_danhGiaTrungBinh
+    FROM PhanHoi ph
+    JOIN LichSuMuonPhong ls ON ph.MaLichSu = ls.MaLichSu
+    JOIN YeuCauMuonPhong y ON ls.MaYeuCau = y.MaYeuCau
+    WHERE y.MaPhong = p_maPhong;
+    
+    RETURN IFNULL(v_danhGiaTrungBinh, 0);
+END //
+DELIMITER ;
