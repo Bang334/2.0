@@ -563,24 +563,24 @@ const ThongBaoList = forwardRef(({ isGiangVien = false }, ref) => {
                   <div className="d-flex align-items-center">
                     {selectedThongBao.thongBaoGui?.nguoiGui?.hoTen && (
                       <div 
-                      style={{
-                        width: '40px', 
-                        height: '40px', 
-                        borderRadius: '50%', 
-                        background: '#e3f2fd',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: '12px',
-                        color: 'var(--primary-color)',
-                        fontWeight: 'bold',
-                      }}
+                      // style={{
+                      //   width: '40px', 
+                      //   height: '40px', 
+                      //   borderRadius: '50%', 
+                      //   background: '#e3f2fd',
+                      //   display: 'flex',
+                      //   alignItems: 'center',
+                      //   justifyContent: 'center',
+                      //   marginRight: '12px',
+                      //   color: 'var(--primary-color)',
+                      //   fontWeight: 'bold',
+                      // }}
                       >
                         {selectedThongBao.thongBaoGui?.nguoiGui?.hoTen.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <h5 className="mb-0" style={{color: '#fff'}}>{selectedThongBao.thongBaoGui?.nguoiGui?.hoTen || "Quản Lý"}</h5>
+                      <h5 className="mb-0">{selectedThongBao.thongBaoGui?.nguoiGui?.hoTen || "Quản Lý"}</h5>
                       <small className="text-muted">
                         Gửi cho {selectedThongBao.thongBaoGui?.guiChoLop ? selectedThongBao.thongBaoGui?.lopNhan?.tenLop : "bạn"}
                       </small>

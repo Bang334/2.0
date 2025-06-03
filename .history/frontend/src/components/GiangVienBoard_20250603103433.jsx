@@ -24,6 +24,9 @@ const GiangVienBoard = () => {
   const [danhSachPhong, setDanhSachPhong] = useState([]);
   const [yeuCauMuonPhong, setYeuCauMuonPhong] = useState([]);
   const [lichSuMuonPhong, setLichSuMuonPhong] = useState([]);
+  const [danhSachSinhVien, setDanhSachSinhVien] = useState([]);
+  const [selectedLopHoc, setSelectedLopHoc] = useState(null);
+  const [lopHocList, setLopHocList] = useState([]);
   const [activeTab, setActiveTab] = useState("thongtin");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -39,6 +42,7 @@ const GiangVienBoard = () => {
     fetchDanhSachPhong();
     fetchYeuCauMuonPhong();
     fetchLichSuMuonPhong();
+    fetchLopHocList();
   }, []);
 
   // Auto-hide toast after 3 seconds
@@ -111,6 +115,48 @@ const GiangVienBoard = () => {
       console.error("Error fetching lịch dạy:", error);
       handleError(`Không thể tải lịch dạy: ${error.response?.data?.message || error.message}`);
       return [];
+    }
+  };
+
+  const fetchDanhSachSinhVien = async (maLop) => {
+    if (!maLop) return;
+    
+    try {
+      setLoading(true);
+      const response = await UserService.getDanhSachSinhVienLop(maLop);
+      setDanhSachSinhVien(response.data);
+      setSelectedLopHoc(maLop);
+      setLoading(false);
+    } catch (error) {
+      console.error(`Error fetching danh sách sinh viên of ${maLop}:`, error);
+      handleError(`Không thể tải danh sách sinh viên của lớp ${maLop}`);
+      setLoading(false);
+    }
+  };
+
+  const fetchLopHocList = async () => {
+    try {
+      // Lấy danh sách lớp học từ lịch dạy, sử dụng API không cần tham số tuần
+      const response = await UserService.getLichDayGiangVienAll();
+      
+      // Lọc và tạo danh sách lớp học duy nhất
+      const uniqueLopHoc = new Set();
+      if (Array.isArray(response.data)) {
+        response.data.forEach(tkb => {
+          if (tkb.lopHoc) {
+            uniqueLopHoc.add(JSON.stringify({
+              maLop: tkb.lopHoc.maLop,
+              tenLop: tkb.lopHoc.tenLop || tkb.lopHoc.maLop
+            }));
+          }
+        });
+      }
+      
+      const lopList = Array.from(uniqueLopHoc).map(jsonStr => JSON.parse(jsonStr));
+      setLopHocList(lopList);
+    } catch (error) {
+      console.error("Error fetching lớp học list:", error);
+      handleError("Không thể tải danh sách lớp học");
     }
   };
 
@@ -208,6 +254,9 @@ const GiangVienBoard = () => {
             <Nav.Link eventKey="lichhoc">Lịch dạy</Nav.Link>
           </Nav.Item>
           <Nav.Item>
+            <Nav.Link eventKey="dssvLop">Danh sách sinh viên</Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
             <Nav.Link eventKey="muonphong">Mượn phòng</Nav.Link>
           </Nav.Item>
         </Nav>
@@ -269,6 +318,79 @@ const GiangVienBoard = () => {
           />
         )}
         
+        {activeTab === "dssvLop" && (
+          <Card>
+            <Card.Header>
+              <h5>Danh sách sinh viên theo lớp</h5>
+            </Card.Header>
+            <Card.Body>
+              {lopHocList.length === 0 ? (
+                <Alert variant="info">
+                  Bạn chưa được phân công dạy lớp nào.
+                </Alert>
+              ) : (
+                <div>
+                  <div className="mb-4">
+                    <h6>Chọn lớp:</h6>
+                    <div className="d-flex flex-wrap gap-2">
+                      {lopHocList.map((lop) => (
+                        <Button
+                          key={lop.maLop}
+                          variant={selectedLopHoc === lop.maLop ? "primary" : "outline-primary"}
+                          onClick={() => fetchDanhSachSinhVien(lop.maLop)}
+                        >
+                          {lop.tenLop || lop.maLop}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {selectedLopHoc && (
+                    <div>
+                      <h5>Danh sách sinh viên lớp {lopHocList.find(lop => lop.maLop === selectedLopHoc)?.tenLop || selectedLopHoc}</h5>
+                      {loading ? (
+                        <div className="text-center p-4">
+                          <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Đang tải...</span>
+                          </div>
+                          <p className="mt-2">Đang tải danh sách sinh viên...</p>
+                        </div>
+                      ) : danhSachSinhVien.length > 0 ? (
+                        <Table striped bordered hover responsive>
+                          <thead>
+                            <tr>
+                              <th width="60">STT</th>
+                              <th width="120">Mã SV</th>
+                              <th>Họ tên</th>
+                              <th>Email</th>
+                              <th>Giới tính</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {danhSachSinhVien.map((student, index) => (
+                              <tr key={student.maSV || index}>
+                                <td className="text-center">{index + 1}</td>
+                                <td>{student.maSV}</td>
+                                <td>{student.hoTen || 'N/A'}</td>
+                                <td>{student.email || 'N/A'}</td>
+                                <td>{student.gioiTinh || 'N/A'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </Table>
+                      ) : (
+                        <Alert variant="warning">
+                          Không có sinh viên nào trong lớp này.
+                        </Alert>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        )}
+
         {activeTab === "muonphong" && (
           <MuonPhongManager 
             yeuCauMuonPhong={yeuCauMuonPhong}

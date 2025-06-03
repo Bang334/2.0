@@ -1,0 +1,119 @@
+# TÓM TẮT
+
+Đề tài "Hệ thống Quản Lý Mượn Phòng Học" được xây dựng nhằm hỗ trợ các trường đại học, cao đẳng trong việc quản lý, đăng ký và sử dụng phòng học một cách hiệu quả, hiện đại hóa quy trình quản lý truyền thống. Hệ thống cho phép sinh viên, giảng viên đăng ký mượn phòng học, quản lý thiết bị, theo dõi lịch sử sử dụng phòng, đồng thời hỗ trợ phân quyền, bảo mật và thống kê báo cáo. Đề tài sử dụng các công nghệ hiện đại như Java Spring Boot, ReactJS, MySQL, JWT, đảm bảo tính mở rộng, bảo mật và thân thiện với người dùng.
+
+---
+
+# Chương I. TỔNG QUAN
+
+## 1. Giới thiệu đề tài
+
+Trong bối cảnh số hóa giáo dục, việc quản lý và sử dụng hiệu quả cơ sở vật chất, đặc biệt là phòng học, là một yêu cầu cấp thiết đối với các trường đại học, cao đẳng. Tuy nhiên, nhiều đơn vị vẫn quản lý phòng học theo phương pháp thủ công, gây lãng phí thời gian, dễ xảy ra nhầm lẫn và khó kiểm soát lịch sử sử dụng. Đề tài "Hệ thống Quản Lý Mượn Phòng Học" ra đời nhằm giải quyết các vấn đề trên, cung cấp một nền tảng trực tuyến giúp tự động hóa quy trình đăng ký, phê duyệt, theo dõi và thống kê việc sử dụng phòng học, thiết bị.
+
+## 2. Cơ sở lý thuyết
+
+### 2.1. Hệ thống thông tin quản lý
+
+Hệ thống thông tin quản lý (MIS) là tập hợp các thành phần phần mềm và phần cứng nhằm thu thập, lưu trữ, xử lý và cung cấp thông tin phục vụ cho hoạt động quản lý, điều hành của tổ chức. Hệ thống quản lý mượn phòng học giúp tự động hóa quy trình đăng ký, phê duyệt, theo dõi và thống kê việc sử dụng phòng học, thiết bị, góp phần nâng cao hiệu quả quản lý cơ sở vật chất.
+
+### 2.2. Các khái niệm liên quan
+
+- **Phòng học**: Không gian vật lý được trang bị các thiết bị phục vụ cho hoạt động dạy và học.
+- **Mượn phòng**: Quy trình đăng ký sử dụng phòng học vào một thời điểm xác định, có thể kèm theo yêu cầu về thiết bị.
+- **Thiết bị**: Các tài sản như máy chiếu, máy tính, loa, bảng thông minh... được quản lý gắn liền với phòng học.
+
+### 2.3. Mô hình Client-Server
+
+Mô hình Client-Server phân tách giữa phía máy khách (client) và máy chủ (server). Máy khách gửi yêu cầu, máy chủ xử lý và trả về kết quả, giúp hệ thống dễ mở rộng, bảo trì, tăng tính bảo mật và hiệu quả vận hành.
+
+### 2.4. Kiến trúc phần mềm MVC
+
+MVC (Model-View-Controller) phân tách ứng dụng thành ba phần: Model (quản lý dữ liệu, logic nghiệp vụ), View (hiển thị giao diện), Controller (xử lý yêu cầu, điều phối giữa Model và View). Mô hình này giúp tăng tính tổ chức, dễ bảo trì và mở rộng hệ thống.
+
+### 2.5. Công nghệ sử dụng
+
+- **Java Spring Boot**: Framework phát triển backend mạnh mẽ, bảo mật, dễ mở rộng, tích hợp Spring Security, Spring Data JPA.
+- **ReactJS**: Thư viện JavaScript xây dựng giao diện người dùng động, hiện đại, dễ bảo trì.
+- **MySQL**: Hệ quản trị cơ sở dữ liệu quan hệ, lưu trữ thông tin có cấu trúc.
+- **JWT (JSON Web Token)**: Chuẩn xác thực, phân quyền truy cập API.
+- **Các thư viện hỗ trợ**: Spring Security, Spring Data JPA, React Bootstrap, Ant Design, Formik, Yup, Axios, Chart.js.
+
+### 2.6. Các công nghệ liên quan chức năng chính
+
+- **Giao diện người dùng (UI/UX)**: Xây dựng bằng ReactJS, hỗ trợ responsive, thân thiện với người dùng.
+- **Xác thực và phân quyền**: Sử dụng Spring Security và JWT đảm bảo bảo mật, phân quyền theo vai trò.
+- **Quản lý trạng thái, luồng hoạt động**: Theo dõi trạng thái yêu cầu mượn phòng (chờ duyệt, đã duyệt, từ chối, đã trả phòng...) minh bạch, thuận tiện cho thống kê.
+
+### 2.7. Lý thuyết về thuật toán/mô hình
+
+- **Kiểm tra xung đột lịch mượn phòng**: Thuật toán kiểm tra giao nhau giữa các khoảng thời gian, đảm bảo không có hai yêu cầu trùng nhau.
+- **Thống kê, báo cáo**: Sử dụng truy vấn tổng hợp để thống kê tần suất sử dụng phòng, thiết bị.
+
+---
+
+# Chương II. THIẾT KẾ HỆ THỐNG
+
+## 1. Kiến trúc tổng thể
+
+Hệ thống được thiết kế theo mô hình Client-Server, gồm hai thành phần chính:
+- **Frontend**: Xây dựng bằng ReactJS, cung cấp giao diện người dùng, gửi yêu cầu đến backend qua API.
+- **Backend**: Xây dựng bằng Java Spring Boot, xử lý logic nghiệp vụ, truy xuất cơ sở dữ liệu MySQL, xác thực và phân quyền bằng JWT.
+
+## 2. Thiết kế cơ sở dữ liệu
+
+- **Các bảng chính**: Người dùng, Phòng học, Thiết bị, Yêu cầu mượn phòng, Lịch sử mượn phòng, Phân quyền.
+- **Quan hệ**: Một người dùng có thể tạo nhiều yêu cầu mượn phòng; mỗi phòng học có thể có nhiều thiết bị; mỗi yêu cầu mượn phòng liên kết với một phòng học và một người dùng.
+
+## 3. Thiết kế chức năng
+
+- **Quản lý tài khoản**: Đăng nhập, phân quyền (sinh viên, giảng viên, quản lý).
+- **Quản lý phòng học, thiết bị**: Thêm, sửa, xóa, tìm kiếm phòng học và thiết bị.
+- **Đăng ký mượn phòng**: Tạo, duyệt, từ chối, hủy yêu cầu mượn phòng.
+- **Thống kê, báo cáo**: Thống kê tần suất sử dụng phòng, xuất báo cáo.
+
+## 4. Thiết kế giao diện
+
+- **Trang đăng nhập/đăng ký**
+- **Trang quản lý phòng học, thiết bị**
+- **Trang đăng ký mượn phòng**
+- **Trang thống kê, báo cáo**
+
+---
+
+# Chương III. TRIỂN KHAI HỆ THỐNG
+
+## 1. Môi trường triển khai
+
+- **Backend**: Java 17+, Spring Boot, MySQL 8+
+- **Frontend**: Node.js 18+, ReactJS
+
+## 2. Các bước triển khai
+
+- Cài đặt môi trường phát triển (Java, Node.js, MySQL)
+- Khởi tạo cơ sở dữ liệu, cấu hình kết nối
+- Triển khai backend: build và chạy ứng dụng Spring Boot
+- Triển khai frontend: cài đặt dependencies, chạy ứng dụng ReactJS
+- Kết nối frontend và backend qua API
+
+## 3. Kiểm thử hệ thống
+
+- Kiểm thử chức năng đăng nhập, đăng ký, phân quyền
+- Kiểm thử đăng ký, duyệt, từ chối, hủy yêu cầu mượn phòng
+- Kiểm thử thống kê, báo cáo
+
+---
+
+# Chương IV. KẾT LUẬN
+
+Hệ thống Quản Lý Mượn Phòng Học đã đáp ứng được các yêu cầu đặt ra về tự động hóa quy trình đăng ký, quản lý, sử dụng phòng học và thiết bị trong nhà trường. Việc ứng dụng các công nghệ hiện đại giúp hệ thống đảm bảo tính bảo mật, mở rộng, thân thiện với người dùng. Tuy nhiên, hệ thống vẫn còn có thể phát triển thêm các chức năng như gửi thông báo qua email, tích hợp lịch học tự động, hoặc mở rộng cho các loại tài sản khác.
+
+---
+
+# TÀI LIỆU THAM KHẢO
+
+1. Spring Boot Documentation: https://spring.io/projects/spring-boot  
+2. ReactJS Official Docs: https://react.dev/  
+3. MySQL Documentation: https://dev.mysql.com/doc/  
+4. JWT Introduction: https://jwt.io/introduction  
+5. Giáo trình Phân tích thiết kế hệ thống thông tin, NXB Giáo dục  
+6. Tài liệu nội bộ và các nguồn tham khảo khác 

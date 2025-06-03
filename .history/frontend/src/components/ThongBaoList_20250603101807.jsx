@@ -580,7 +580,7 @@ const ThongBaoList = forwardRef(({ isGiangVien = false }, ref) => {
                       </div>
                     )}
                     <div>
-                      <h5 className="mb-0" style={{color: '#fff'}}>{selectedThongBao.thongBaoGui?.nguoiGui?.hoTen || "Quản Lý"}</h5>
+                      <h5 className="mb-0">{selectedThongBao.thongBaoGui?.nguoiGui?.hoTen || "Quản Lý"}</h5>
                       <small className="text-muted">
                         Gửi cho {selectedThongBao.thongBaoGui?.guiChoLop ? selectedThongBao.thongBaoGui?.lopNhan?.tenLop : "bạn"}
                       </small>

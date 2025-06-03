@@ -201,40 +201,13 @@ class UserService {
   }
 
   getDanhSachSinhVienLop(maLop) {
-    const user = JSON.parse(localStorage.getItem("user"));
-    console.log("Current user in getDanhSachSinhVienLop:", user ? { 
-      id: user.id, 
-      username: user.username,
-      roles: user.roles,
-      hasToken: !!user.token 
-    } : "No user found");
-    
-    const headers = authHeader();
-    console.log("Auth headers:", headers);
-
-    // Nếu có mã lớp cụ thể, sử dụng trực tiếp
-    if (maLop) {
-      console.log(`Lấy danh sách sinh viên cho lớp: ${maLop}`);
-      return api.get(`/giangvien/danhsachsinhvien/${maLop}`, { headers });
-    }
-
-    // Giảng viên sẽ sử dụng API của giảng viên, sinh viên sẽ sử dụng API của sinh viên
-    if (user && user.roles && user.roles.includes("ROLE_GV")) {
-      // Nếu không có lớp cụ thể, lấy tất cả sinh viên của lớp đầu tiên mà giảng viên dạy
-      return this.getDanhSachLopHocGV()
-        .then(response => {
-          if (response.data && response.data.length > 0) {
-            const maLop = response.data[0].maLop;
-            console.log(`Lấy danh sách sinh viên cho lớp đầu tiên: ${maLop}`);
-            // Gọi trực tiếp API endpoint thay vì gọi lại hàm này
-            return api.get(`/giangvien/danhsachsinhvien/${maLop}`, { headers });
-          }
-          return { data: [] };
-        });
-    } else {
-      // Sinh viên chỉ có thể xem sinh viên trong lớp của mình
-      return api.get("/sinhvien/danhsach-lop", { headers: headers });
-    }
+    return api.get(`/giangvien/danhsachsinhvien/${maLop}`)
+      .then(response => {
+        return response;
+      })
+      .catch(error => {
+        throw error;
+      });
   }
 
   // API mượn phòng cho giảng viên
@@ -661,6 +634,38 @@ class UserService {
       console.error("Lỗi khi cập nhật trạng thái phân công:", error.response?.data || error.message);
       throw error;
     });
+  }
+
+  // API cho phân công mượn phòng
+  getDanhSachSinhVienLop() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    console.log("Current user in getDanhSachSinhVienLop:", user ? { 
+      id: user.id, 
+      username: user.username,
+      roles: user.roles,
+      hasToken: !!user.token 
+    } : "No user found");
+    
+    const headers = authHeader();
+    console.log("Auth headers:", headers);
+
+    // Giảng viên sẽ sử dụng API của giảng viên, sinh viên sẽ sử dụng API của sinh viên
+    if (user && user.roles && user.roles.includes("ROLE_GV")) {
+      // Nếu không có lớp cụ thể, lấy tất cả sinh viên của lớp đầu tiên mà giảng viên dạy
+      return this.getDanhSachLopHocGV()
+        .then(response => {
+          if (response.data && response.data.length > 0) {
+            const maLop = response.data[0].maLop;
+            console.log(`Lấy danh sách sinh viên cho lớp đầu tiên: ${maLop}`);
+            // Gọi trực tiếp API endpoint thay vì gọi lại hàm này
+            return api.get(`/giangvien/danhsachsinhvien/${maLop}`, { headers });
+          }
+          return { data: [] };
+        });
+    } else {
+      // Sinh viên chỉ có thể xem sinh viên trong lớp của mình
+      return api.get("/sinhvien/danhsach-lop", { headers: headers });
+    }
   }
 
   // Lấy thời khóa biểu của lớp hiện tại (cho form phân công) - chỉ lấy TKB chưa được phân công
