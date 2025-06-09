@@ -1080,7 +1080,7 @@ public class QuanLyController {
             }
 
             // Gán vai trò giảng viên
-            Optional<Role> roleOpt = roleRepository.findByTenVaiTro("ROLE_GV");
+            Optional<Role> roleOpt = roleRepository.findByTenVaiTro("GV");
             if (roleOpt.isPresent()) {
                 nguoiDung.setVaiTro(roleOpt.get());
             } else {
@@ -1660,9 +1660,11 @@ public class QuanLyController {
                 Calendar cal = Calendar.getInstance();
                 cal.add(Calendar.MONTH, -12);
                 fromDate = cal.getTime();
+                logger.info("Ngày bắt đầu thống kê mặc định (12 tháng trước): " + fromDate);
             }
             if (toDate == null) {
                 toDate = new Date(); // Hiện tại
+                logger.info("Ngày kết thúc thống kê mặc định (hiện tại): " + toDate);
             }
 
             // Tạo biến final để sử dụng trong lambda
@@ -1694,6 +1696,7 @@ public class QuanLyController {
                 if (yeuCauList == null) {
                     yeuCauList = new ArrayList<>();
                 }
+                logger.info("Tổng số yêu cầu mượn phòng cho " + maPhong + " (trước lọc): " + yeuCauList.size());
 
                 // Lọc theo trạng thái DADUYET và theo khoảng thời gian
                 List<YeuCauMuonPhong> filteredRequests = yeuCauList.stream()
@@ -1702,6 +1705,8 @@ public class QuanLyController {
                         && yc.getThoiGianMuon().after(finalFromDate)
                         && yc.getThoiGianMuon().before(finalToDate))
                         .collect(Collectors.toList());
+
+                logger.info("Số yêu cầu DADUYET trong khoảng thời gian cho " + maPhong + ": " + filteredRequests.size());
 
                 // Cập nhật thống kê theo phòng
                 thongKeTheoPhong.put(maPhong, filteredRequests.size());
@@ -1772,12 +1777,10 @@ public class QuanLyController {
             // Tìm danh sách tất cả các phòng đã được mượn
             Set<String> allRooms = new HashSet<>();
             for (Phong phong : danhSachPhong) {
-                if (thongKeTheoPhong.getOrDefault(phong.getMaPhong(), 0) > 0) {
                     allRooms.add(phong.getMaPhong());
-                }
             }
             
-            // Nếu không có phòng nào được mượn, sử dụng tất cả phòng
+            // Nếu không có phòng nào được mượn, sử dụng tất cả phòng (điều kiện này giờ ít cần thiết nhưng vẫn giữ lại)
             if (allRooms.isEmpty()) {
                 for (Phong phong : danhSachPhong) {
                     allRooms.add(phong.getMaPhong());
@@ -1810,6 +1813,7 @@ public class QuanLyController {
             response.put("danhSachPhong", roomList);
             response.put("nhanThoiGian", timeLabels);
             response.put("loaiThongKe", loaiThongKe);
+            response.put("isLimitedData", false); // Thêm dòng này
 
             logger.info("Hoàn thành xử lý API thống kê tần suất. Số phòng: " + roomList.size() + 
                        ", Số điểm thời gian: " + timeLabels.size());

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Container, Row, Col, Card, Table, Button, Form, Modal, Badge, ProgressBar } from "react-bootstrap";
+import { Container, Row, Col, Card, Table, Button, Form, Modal, Badge, ProgressBar, Alert } from "react-bootstrap";
 import axios from "axios";
 import authHeader from "../services/auth-header";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash, faSearch, faKey, faChartBar, faUser, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash, faSearch, faKey, faChartBar, faUser, faUsers, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-toastify";
 
 const API_URL = "http://localhost:8080/api/quanly";
@@ -18,6 +18,7 @@ const GiangVienManager = ({ refreshKey }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showTaiKhoanForm, setShowTaiKhoanForm] = useState(false);
   const [khoaList, setKhoaList] = useState([]);
+  const [showAddGiangVienModal, setShowAddGiangVienModal] = useState(false);
   const [formData, setFormData] = useState({
     maGV: "",
     hoTen: "",
@@ -26,7 +27,7 @@ const GiangVienManager = ({ refreshKey }) => {
     gioiTinh: "Nam",
     khoa: "",
     userId: "",
-    password: ""
+    password: "",
   });
   const [statsData, setStatsData] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -206,12 +207,52 @@ const GiangVienManager = ({ refreshKey }) => {
     (gv.khoa && gv.khoa.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Hiển thị modal thêm giảng viên mới
+  const handleShowAddGiangVienModal = () => {
+    setFormData({
+      maGV: "",
+      hoTen: "",
+      email: "",
+      lienHe: "",
+      gioiTinh: "Nam",
+      khoa: "",
+      userId: "",
+      password: "",
+    });
+    setShowTaiKhoanForm(false); // Mặc định ẩn form tài khoản khi mở modal mới
+    setShowAddGiangVienModal(true);
+  };
+
+  // Thêm giảng viên mới
+  const handleAddGiangVien = async () => {
+    if (!formData.maGV || !formData.hoTen || !formData.email || !formData.khoa || !formData.userId || !formData.password) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc, bao gồm cả tài khoản.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API_URL}/giangvien`, formData, {
+        headers: authHeader(),
+      });
+      setShowAddGiangVienModal(false);
+      toast.success("Giảng viên đã được tạo thành công!");
+      fetchGiangVienList();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Đã có lỗi xảy ra khi tạo giảng viên."
+      );
+    }
+  };
+
   return (
     <Container >
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Quản lý giảng viên</h5>
           <div>
+            <Button variant="outline-light" onClick={handleShowAddGiangVienModal} className="me-2" id="add-giangvien-btn">
+              <FontAwesomeIcon icon={faUserPlus} /> Thêm giảng viên mới
+            </Button>
             <Button variant="outline-light" onClick={handleShowStatsModal} id="giangvien-stats-btn">
               <FontAwesomeIcon icon={faChartBar} /> Báo cáo thống kê
             </Button>
@@ -252,17 +293,11 @@ const GiangVienManager = ({ refreshKey }) => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="text-center">
-                      <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                    </td>
+                    <td colSpan="7" className="text-center"><div className="spinner-border spinner-border-sm me-2" role="status"></div>Đang tải...</td>
                   </tr>
                 ) : filteredGiangVien.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center">
-                      Không có giảng viên nào
-                    </td>
+                    <td colSpan="7" className="text-center">Không có giảng viên nào</td>
                   </tr>
                 ) : (
                   filteredGiangVien.map((giangVien) => (
@@ -628,6 +663,155 @@ const GiangVienManager = ({ refreshKey }) => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowStatsModal(false)}>
             Đóng
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal Thêm giảng viên mới */}
+      <Modal show={showAddGiangVienModal} onHide={() => setShowAddGiangVienModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Thêm giảng viên mới</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Mã giảng viên <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="maGV"
+                    value={formData.maGV}
+                    onChange={handleInputChange}
+                    placeholder="Nhập mã giảng viên"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Họ tên <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="hoTen"
+                    value={formData.hoTen}
+                    onChange={handleInputChange}
+                    placeholder="Nhập họ tên giảng viên"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Email <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Nhập email"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Liên hệ</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="lienHe"
+                    value={formData.lienHe}
+                    onChange={handleInputChange}
+                    placeholder="Nhập số điện thoại hoặc địa chỉ"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Giới tính <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="gioiTinh"
+                    value={formData.gioiTinh}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="Nam">Nam</option>
+                    <option value="Nu">Nữ</option>
+                    <option value="KhongXacDinh">Không xác định</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Khoa <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="khoa"
+                    value={formData.khoa}
+                    onChange={handleInputChange}
+                    placeholder="Nhập khoa"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <hr />
+            <Button
+              variant="link"
+              onClick={handleToggleTaiKhoanForm}
+              className="p-0 mb-3 d-flex align-items-center"
+            >
+              <FontAwesomeIcon icon={faKey} className="me-2" />
+              {showTaiKhoanForm ? "Ẩn thông tin tài khoản" : "Thêm thông tin tài khoản"}
+            </Button>
+
+            {showTaiKhoanForm && (
+              <>
+                <Alert variant="info" className="mb-3">
+                  Tạo tài khoản người dùng mới cho giảng viên này. Mã người dùng (User ID) và Mật khẩu là bắt buộc.
+                </Alert>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Tên đăng nhập <span className="text-danger">*</span></Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="userId"
+                        value={formData.userId}
+                        onChange={handleInputChange}
+                        placeholder="Nhập tên đăng nhập"
+                        required={showTaiKhoanForm} // Required only when form is shown
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Mật khẩu <span className="text-danger">*</span></Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Nhập mật khẩu"
+                        required={showTaiKhoanForm} // Required only when form is shown
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </>
+            )}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAddGiangVienModal(false)}>
+            Hủy
+          </Button>
+          <Button variant="primary" onClick={handleAddGiangVien}>
+            Thêm giảng viên
           </Button>
         </Modal.Footer>
       </Modal>

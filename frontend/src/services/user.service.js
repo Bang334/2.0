@@ -453,34 +453,36 @@ class UserService {
 
   // API thống kê tần suất sử dụng phòng
   getThongKeTanSuatPhong(loaiThongKe, tuNgay, denNgay) {
-    // Tạo URL với tham số lọc (sử dụng API hoạt động)
-    let url = '/quanly/phong/thongke';
+    // Tạo URL với tham số lọc
+    let url = '/quanly/phong/thongke-tan-suat';
+    const params = new URLSearchParams();
+    if (loaiThongKe) {
+      params.append('loaiThongKe', loaiThongKe);
+    }
+    if (tuNgay) {
+      params.append('tuNgay', tuNgay);
+    }
+    if (denNgay) {
+      params.append('denNgay', denNgay);
+    }
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
     
     console.log(`Gọi API thống kê tần suất sử dụng phòng: ${url}`);
     
     return api.get(url)
       .then(response => {
-        console.log('Dữ liệu thống kê từ API:', response.data);
+        console.log('Dữ liệu thống kê tần suất từ API:', response.data);
         
-        // Chuyển đổi dữ liệu từ API phong/thongke sang định dạng cần thiết
-        const danhSachPhong = response.data.map(p => p.maPhong);
-        const thongKeTheoPhong = {};
-        response.data.forEach(phong => {
-          thongKeTheoPhong[phong.maPhong] = phong.approvedBookings || 0;
-        });
-        
-        // Lấy số yêu cầu đã duyệt làm cơ sở
-        const thongKeTheoThoiGian = [];
-        const timeLabels = [];
-        
-        // Tạo dữ liệu kết quả
+        // Dữ liệu từ backend đã có định dạng cần thiết
         const transformedData = {
-          thongKeTheoPhong: thongKeTheoPhong,
-          thongKeTheoThoiGian: [],
-          danhSachPhong: danhSachPhong,
-          nhanThoiGian: [],
-          loaiThongKe: loaiThongKe || 'TUAN',
-          isLimitedData: true // Đánh dấu rằng đây là dữ liệu hạn chế
+          thongKeTheoPhong: response.data.thongKeTheoPhong || {},
+          thongKeTheoThoiGian: response.data.thongKeTheoThoiGian || [],
+          danhSachPhong: response.data.danhSachPhong || [],
+          nhanThoiGian: response.data.nhanThoiGian || [],
+          loaiThongKe: response.data.loaiThongKe || loaiThongKe || 'TUAN',
+          isLimitedData: response.data.isLimitedData || false
         };
         
         return { data: transformedData };

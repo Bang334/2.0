@@ -63,7 +63,7 @@ const ThongKeTanSuatPhong = () => {
   // Load dữ liệu khi component mount hoặc filters thay đổi
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filters]);
 
   const fetchData = () => {
     setLoading(true);
@@ -72,6 +72,8 @@ const ThongKeTanSuatPhong = () => {
     // Chuẩn bị tham số
     const tuNgay = filters.tuNgay ? dayjs(filters.tuNgay).format('YYYY-MM-DD') : null;
     const denNgay = filters.denNgay ? dayjs(filters.denNgay).format('YYYY-MM-DD') : null;
+
+    console.log(`Fetching data with loaiThongKe: ${filters.loaiThongKe}, tuNgay: ${tuNgay}, denNgay: ${denNgay}`);
 
     // Gọi API
     userService.getThongKeTanSuatPhong(filters.loaiThongKe, tuNgay, denNgay)
@@ -198,59 +200,43 @@ const ThongKeTanSuatPhong = () => {
     }
     
     // Nếu không có dữ liệu phòng hoặc dữ liệu giới hạn, tạo dữ liệu mẫu
-    if (!thongKeData.thongKeTheoPhong || Object.keys(thongKeData.thongKeTheoPhong).length === 0) {
-      // Nếu có danh sách phòng, sử dụng để tạo dữ liệu mẫu
-      const roomList = thongKeData.danhSachPhong || [];
-      if (roomList.length === 0) {
-        return null;
-      }
-      
-      const labels = roomList.map(room => `Phòng ${room}`);
-      const data = labels.map(() => Math.floor(Math.random() * 20) + 1);
-      
-      const backgroundColors = [
-        'rgba(255, 99, 132, 0.8)',
-        'rgba(54, 162, 235, 0.8)',
-        'rgba(255, 206, 86, 0.8)',
-        'rgba(75, 192, 192, 0.8)',
-        'rgba(153, 102, 255, 0.8)',
-        'rgba(255, 159, 64, 0.8)',
-        'rgba(199, 199, 199, 0.8)',
-        'rgba(83, 102, 255, 0.8)',
-        'rgba(40, 159, 64, 0.8)',
-        'rgba(210, 199, 199, 0.8)',
+    if (thongKeData.isLimitedData || !thongKeData.thongKeTheoPhong || Object.keys(thongKeData.thongKeTheoPhong).length === 0) {
+      const sampleLabels = ['Phòng A (Ước tính)', 'Phòng B (Ước tính)', 'Phòng C (Ước tính)'];
+      const sampleData = sampleLabels.map(() => Math.floor(Math.random() * 10) + 1);
+      const sampleBackgroundColors = [
+        'rgba(128, 179, 160, 0.8)', // Soft Green
+        'rgba(204, 153, 153, 0.8)', // Dusty Rose
+        'rgba(153, 204, 255, 0.8)',  // Sky Blue
       ];
-      
       return {
-        labels: labels,
+        labels: sampleLabels,
         datasets: [
           {
-            label: 'Số lần được mượn (Dữ liệu ước tính)',
-            data: data,
-            backgroundColor: backgroundColors.slice(0, labels.length),
-            borderColor: backgroundColors.map(color => color.replace('0.8', '1')).slice(0, labels.length),
+            label: 'Số lần được mượn',
+            data: sampleData,
+            backgroundColor: sampleBackgroundColors,
+            borderColor: sampleBackgroundColors.map(color => color.replace('0.8', '1')),
             borderWidth: 1,
           }
         ]
       };
     }
 
-    const roomData = thongKeData.thongKeTheoPhong;
-    const labels = Object.keys(roomData).sort().map(room => `Phòng ${room}`);
-    const data = Object.keys(roomData).sort().map(room => roomData[room]);
-
-    // Màu sắc cho các phần
+    const labels = Object.keys(thongKeData.thongKeTheoPhong);
+    const data = Object.values(thongKeData.thongKeTheoPhong);
+    
+    // Màu sắc cho các phần (bảng màu mới, dịu hơn)
     const backgroundColors = [
-      'rgba(255, 99, 132, 0.8)',
-      'rgba(54, 162, 235, 0.8)',
-      'rgba(255, 206, 86, 0.8)',
-      'rgba(75, 192, 192, 0.8)',
-      'rgba(153, 102, 255, 0.8)',
-      'rgba(255, 159, 64, 0.8)',
-      'rgba(199, 199, 199, 0.8)',
-      'rgba(83, 102, 255, 0.8)',
-      'rgba(40, 159, 64, 0.8)',
-      'rgba(210, 199, 199, 0.8)',
+      'rgba(128, 179, 160, 0.8)', // Soft Green
+      'rgba(204, 153, 153, 0.8)', // Dusty Rose
+      'rgba(153, 204, 255, 0.8)', // Sky Blue
+      'rgba(255, 204, 153, 0.8)', // Peach
+      'rgba(179, 128, 179, 0.8)', // Muted Purple
+      'rgba(153, 224, 204, 0.8)', // Mint Green
+      'rgba(255, 179, 179, 0.8)', // Light Coral
+      'rgba(204, 255, 179, 0.8)', // Pale Yellow-Green
+      'rgba(179, 204, 255, 0.8)', // Lavender Blue
+      'rgba(255, 153, 224, 0.8)'  // Soft Pink
     ];
 
     return {
@@ -259,8 +245,8 @@ const ThongKeTanSuatPhong = () => {
         {
           label: 'Số lần được mượn',
           data: data,
-          backgroundColor: backgroundColors.slice(0, labels.length),
-          borderColor: backgroundColors.map(color => color.replace('0.8', '1')).slice(0, labels.length),
+          backgroundColor: backgroundColors,
+          borderColor: backgroundColors.map(color => color.replace('0.8', '1')),
           borderWidth: 1,
         }
       ]
@@ -269,6 +255,17 @@ const ThongKeTanSuatPhong = () => {
 
   // Chuẩn bị dữ liệu để xuất ra Excel
   const prepareExcelData = () => {
+    console.log("prepareExcelData: thongKeData nhận được:", thongKeData);
+
+    if (!thongKeData) {
+      console.log("prepareExcelData: thongKeData là null hoặc undefined.");
+      return {
+        overview: [['Không có dữ liệu thống kê']],
+        roomData: [['Không có dữ liệu thống kê']],
+        timeData: [['Không có dữ liệu thống kê']]
+      };
+    }
+
     // Dữ liệu tổng quan
     const overviewData = [
       ['Thống kê tần suất sử dụng phòng', ''],
@@ -280,67 +277,46 @@ const ThongKeTanSuatPhong = () => {
     ];
 
     // Dữ liệu thống kê theo phòng
-    const roomData = [];
-    if (thongKeData && thongKeData.thongKeTheoPhong) {
-      roomData.push(['Mã phòng', 'Số lần được mượn']);
+    const roomData = [['Mã phòng', 'Số lần được mượn']];
+    if (thongKeData.thongKeTheoPhong) {
       Object.entries(thongKeData.thongKeTheoPhong)
         .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
         .forEach(([room, count]) => {
           roomData.push([`Phòng ${room}`, count]);
         });
-    } else if (thongKeData && thongKeData.danhSachPhong) {
-      roomData.push(['Mã phòng', 'Số lần được mượn (Dữ liệu ước tính)']);
-      thongKeData.danhSachPhong.forEach((room) => {
-        roomData.push([`Phòng ${room}`, Math.floor(Math.random() * 20) + 1]);
-      });
     }
+    console.log("prepareExcelData: roomData đã chuẩn bị:", roomData);
 
     // Dữ liệu thống kê theo thời gian
     const timeData = [];
-    if (thongKeData && thongKeData.thongKeTheoThoiGian && thongKeData.thongKeTheoThoiGian.length > 0) {
+    if (thongKeData.thongKeTheoThoiGian && thongKeData.thongKeTheoThoiGian.length > 0) {
       // Tạo header với tên phòng
       const timeHeader = ['Thời gian'];
-      if (thongKeData.danhSachPhong) {
-        thongKeData.danhSachPhong.forEach(room => {
-          timeHeader.push(`Phòng ${room}`);
-        });
-      }
+      // Thay đổi: Sử dụng keys từ thongKeTheoPhong để đảm bảo lấy đủ tất cả các phòng
+      const roomList = Object.keys(thongKeData.thongKeTheoPhong || {}).sort(); 
+      
+      roomList.forEach(room => {
+        timeHeader.push(`Phòng ${room}`);
+      });
       timeHeader.push('Tổng số lần mượn');
       timeData.push(timeHeader);
 
       // Thêm dữ liệu cho từng thời điểm
       thongKeData.thongKeTheoThoiGian.forEach(item => {
         const row = [item.thoiGian];
-        if (thongKeData.danhSachPhong) {
-          thongKeData.danhSachPhong.forEach(room => {
-            row.push(item[room] || 0);
-          });
-        }
-        row.push(item.tongSoLanMuon);
-        timeData.push(row);
-      });
-    } else if (thongKeData && thongKeData.danhSachPhong) {
-      // Tạo dữ liệu mẫu nếu không có dữ liệu thật
-      const sampleLabels = ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'];
-      const timeHeader = ['Thời gian'];
-      thongKeData.danhSachPhong.forEach(room => {
-        timeHeader.push(`Phòng ${room} (Dữ liệu ước tính)`);
-      });
-      timeHeader.push('Tổng số lần mượn (Dữ liệu ước tính)');
-      timeData.push(timeHeader);
-
-      sampleLabels.forEach(timeLabel => {
-        const row = [timeLabel];
         let total = 0;
-        thongKeData.danhSachPhong.forEach(() => {
-          const value = Math.floor(Math.random() * 5);
-          row.push(value);
-          total += value;
+        
+        roomList.forEach(room => {
+          const count = item[room] || 0;
+          row.push(count);
+          total += count;
         });
+        
         row.push(total);
         timeData.push(row);
       });
     }
+    console.log("prepareExcelData: timeData đã chuẩn bị:", timeData);
 
     return {
       overview: overviewData,
@@ -352,6 +328,7 @@ const ThongKeTanSuatPhong = () => {
   // Xuất dữ liệu ra file Excel
   const exportToExcel = () => {
     const { overview, roomData, timeData } = prepareExcelData();
+    console.log("exportToExcel: Dữ liệu cuối cùng để xuất Excel: ", { overview, roomData, timeData });
     
     // Tạo workbook mới
     const wb = XLSX.utils.book_new();
