@@ -60,6 +60,13 @@ const MuonPhongManager = ({
     return returnTime;
   };
 
+  // Tính ngày tối đa có thể đặt (7 ngày từ hiện tại)
+  const getMaxBookingDate = () => {
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 7);
+    return maxDate;
+  };
+
   // Danh sách các loại phòng
   const loaiPhongOptions = ["Phòng học", "Phòng thực hành"];
 
@@ -836,11 +843,15 @@ const MuonPhongManager = ({
                             filterTime={filterTime}
                             dateFormat="dd/MM/yyyy HH:mm"
                             minDate={new Date()}
+                            maxDate={getMaxBookingDate()}
                             placeholderText="Chọn thời gian mượn"
                             className="form-control"
                             required
                             disabled={loading}
                           />
+                          <Form.Text className="text-muted">
+                            Chỉ có thể đặt phòng trong vòng 7 ngày từ hiện tại
+                          </Form.Text>
                         </Form.Group>
                       </Col>
                       <Col md={6}>
@@ -1429,11 +1440,15 @@ const MuonPhongManager = ({
                     filterTime={filterTime}
                     dateFormat="dd/MM/yyyy HH:mm"
                     minDate={new Date()}
+                    maxDate={getMaxBookingDate()}
                     placeholderText="Chọn thời gian mượn"
                     className="form-control"
                     required
                     disabled={loadingNangCao}
                   />
+                  <Form.Text className="text-muted">
+                    Chỉ có thể đặt phòng trong vòng 7 ngày từ hiện tại
+                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={6}>
