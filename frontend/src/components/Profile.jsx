@@ -1,7 +1,85 @@
-import React from 'react';
-import { Container, Card, Row, Col, Image, Badge } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { Container, Card, Row, Col, Image, Badge, Button, Form, Modal, Alert } from 'react-bootstrap';
+import AuthService from '../services/auth.service';
 
 const Profile = ({ currentUser }) => {
+  // State for password change
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  // Auth service instance
+  const authService = new AuthService();
+
+  // Handle password form change
+  const handlePasswordFormChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error message when user types
+    setErrorMessage('');
+  };
+
+  // Handle password change submit
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Reset messages
+    setErrorMessage('');
+    setSuccessMessage('');
+    
+    // Validate passwords
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setErrorMessage('Mật khẩu mới và xác nhận mật khẩu không khớp');
+      return;
+    }
+    
+    if (passwordForm.newPassword.length < 6) {
+      setErrorMessage('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const response = await authService.changePassword(
+        passwordForm.oldPassword,
+        passwordForm.newPassword
+      );
+      
+      setSuccessMessage(response.data.message || 'Đổi mật khẩu thành công');
+      
+      // Reset form
+      setPasswordForm({
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setSuccessMessage('');
+      }, 2000);
+      
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message || 
+        'Đã xảy ra lỗi khi đổi mật khẩu. Vui lòng thử lại sau.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Hàm chuyển đổi vai trò từ mã sang tên đầy đủ
   const getRoleName = (role) => {
     switch(role) {
@@ -185,11 +263,111 @@ const Profile = ({ currentUser }) => {
                   <Col md={4} style={styles.label}>ID tài khoản:</Col>
                   <Col md={8} style={styles.value}>{currentUser?.id || 'N/A'}</Col>
                 </Row>
+                
+                <Row style={styles.infoRow} className="mt-3">
+                  <Col md={12}>
+                    <Button 
+                      variant="outline-primary" 
+                      onClick={() => setShowPasswordModal(true)}
+                      className="w-100"
+                    >
+                      Đổi mật khẩu
+                    </Button>
+                  </Col>
+                </Row>
               </div>
             </Col>
           </Row>
         </Card.Body>
       </Card>
+      
+      {/* Modal đổi mật khẩu */}
+      <Modal 
+        show={showPasswordModal} 
+        onHide={() => {
+          setShowPasswordModal(false);
+          setErrorMessage('');
+          setSuccessMessage('');
+          setPasswordForm({
+            oldPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+          });
+        }}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Đổi mật khẩu</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {errorMessage && (
+            <Alert variant="danger">{errorMessage}</Alert>
+          )}
+          
+          {successMessage && (
+            <Alert variant="success">{successMessage}</Alert>
+          )}
+          
+          <Form onSubmit={handlePasswordSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Mật khẩu hiện tại</Form.Label>
+              <Form.Control
+                type="password"
+                name="oldPassword"
+                value={passwordForm.oldPassword}
+                onChange={handlePasswordFormChange}
+                required
+                disabled={loading}
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>Mật khẩu mới</Form.Label>
+              <Form.Control
+                type="password"
+                name="newPassword"
+                value={passwordForm.newPassword}
+                onChange={handlePasswordFormChange}
+                required
+                disabled={loading}
+              />
+              <Form.Text className="text-muted">
+                Mật khẩu phải có ít nhất 6 ký tự.
+              </Form.Text>
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>Xác nhận mật khẩu mới</Form.Label>
+              <Form.Control
+                type="password"
+                name="confirmPassword"
+                value={passwordForm.confirmPassword}
+                onChange={handlePasswordFormChange}
+                required
+                disabled={loading}
+              />
+            </Form.Group>
+            
+            <div className="d-flex justify-content-end mt-4">
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowPasswordModal(false)}
+                className="me-2"
+                disabled={loading}
+              >
+                Hủy
+              </Button>
+              <Button 
+                variant="primary" 
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 };

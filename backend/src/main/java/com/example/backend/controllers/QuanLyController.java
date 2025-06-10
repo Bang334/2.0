@@ -1051,7 +1051,8 @@ public class QuanLyController {
             String password = (String) request.get("password");
             User newUser = null;
 
-            if (userId != null && password != null) {
+            // Chỉ tạo tài khoản khi cả userId và password đều được cung cấp
+            if (userId != null && !userId.isEmpty() && password != null && !password.isEmpty()) {
                 // Kiểm tra tài khoản đã tồn tại chưa
                 if (userRepository.existsById(userId)) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -1075,9 +1076,11 @@ public class QuanLyController {
             nguoiDung.setLienHe(lienHe);
             nguoiDung.setGioiTinh(NguoiDung.GioiTinh.valueOf(gioiTinh));
 
+            // Chỉ gán tài khoản nếu đã tạo
             if (newUser != null) {
                 nguoiDung.setTaiKhoan(newUser);
             }
+            // Nếu không cung cấp thông tin tài khoản, nguoiDung.taiKhoan sẽ là null
 
             // Gán vai trò giảng viên
             Optional<Role> roleOpt = roleRepository.findByTenVaiTro("GV");
@@ -1098,7 +1101,10 @@ public class QuanLyController {
 
             giangVienRepository.save(giangVien);
 
-            return ResponseEntity.ok(new MessageResponse("Giảng viên đã được tạo thành công"));
+            String message = (newUser == null) 
+                ? "Giảng viên đã được tạo thành công (chưa có tài khoản đăng nhập)" 
+                : "Giảng viên đã được tạo thành công";
+            return ResponseEntity.ok(new MessageResponse(message));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new MessageResponse("Lỗi khi tạo giảng viên: " + e.getMessage()));
@@ -1348,7 +1354,8 @@ public class QuanLyController {
             String password = (String) request.get("password");
             User newUser = null;
 
-            if (userId != null && password != null) {
+            // Chỉ tạo tài khoản khi cả userId và password đều được cung cấp
+            if (userId != null && !userId.isEmpty() && password != null && !password.isEmpty()) {
                 // Kiểm tra tài khoản đã tồn tại chưa
                 if (userRepository.existsById(userId)) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -1372,9 +1379,11 @@ public class QuanLyController {
             nguoiDung.setLienHe(lienHe);
             nguoiDung.setGioiTinh(NguoiDung.GioiTinh.valueOf(gioiTinh));
 
+            // Chỉ gán tài khoản nếu đã tạo
             if (newUser != null) {
                 nguoiDung.setTaiKhoan(newUser);
             }
+            // Nếu không cung cấp thông tin tài khoản, nguoiDung.taiKhoan sẽ là null
 
             // Gán vai trò sinh viên
             Optional<Role> roleOpt = roleRepository.findByTenVaiTro("SV");
@@ -1405,7 +1414,10 @@ public class QuanLyController {
 
             sinhVienRepository.save(sinhVien);
 
-            return ResponseEntity.ok(new MessageResponse("Sinh viên đã được tạo thành công"));
+            String message = (newUser == null) 
+                ? "Sinh viên đã được tạo thành công (chưa có tài khoản đăng nhập)" 
+                : "Sinh viên đã được tạo thành công";
+            return ResponseEntity.ok(new MessageResponse(message));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new MessageResponse("Lỗi khi tạo sinh viên: " + e.getMessage()));
@@ -2577,6 +2589,20 @@ public class QuanLyController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new MessageResponse("Đã có bản ghi cho mượn phòng cho yêu cầu này"));
         }
+        
+        // Kiểm tra thời gian cấp chìa khóa (phải trong khoảng 30 phút trước hoặc sau thời gian mượn)
+        Date currentTime = new Date();
+        Date scheduledTime = yeuCau.getThoiGianMuon();
+        
+        // Tính khoảng cách thời gian (tính bằng phút)
+        long timeDifferenceMs = Math.abs(currentTime.getTime() - scheduledTime.getTime());
+        long timeDifferenceMinutes = timeDifferenceMs / (60 * 1000);
+        
+        // Kiểm tra nếu thời gian hiện tại cách thời gian dự kiến mượn quá 30 phút
+        if (timeDifferenceMinutes > 30) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Chỉ được cấp chìa khóa trong khoảng 30 phút trước hoặc sau thời gian mượn"));
+        }
 
         // Cập nhật trạng thái phòng
         Phong phong = yeuCau.getPhong();
@@ -2586,7 +2612,7 @@ public class QuanLyController {
         // Tạo bản ghi mới cho LichSuMuonPhong
         LichSuMuonPhong lichSu = new LichSuMuonPhong();
         lichSu.setYeuCauMuonPhong(yeuCau);
-        lichSu.setThoiGianMuon(new Date()); // Thời gian hiện tại
+        lichSu.setThoiGianMuon(currentTime); // Thời gian hiện tại
         lichSu.setTrangThaiTra(LichSuMuonPhong.TrangThaiTra.DungHan); // Mặc định là đúng hạn, sẽ được cập nhật khi trả phòng
 
         lichSuMuonPhongRepository.save(lichSu);
@@ -2805,4 +2831,181 @@ public class QuanLyController {
                     .body(new MessageResponse("Lỗi khi thống kê trả phòng: " + e.getMessage()));
         }
     }
+
+    // Thêm tài khoản cho sinh viên chưa có tài khoản
+    @PostMapping("/sinhvien/{maSV}/taikhoan")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> addTaiKhoanToSinhVien(@PathVariable String maSV, @RequestBody Map<String, String> request) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+
+        // Kiểm tra sinh viên có tồn tại không
+        Optional<SinhVien> sinhVienOpt = sinhVienRepository.findById(maSV);
+        if (!sinhVienOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse("Không tìm thấy sinh viên"));
+        }
+
+        SinhVien sinhVien = sinhVienOpt.get();
+        NguoiDung nguoiDung = sinhVien.getNguoiDung();
+
+        if (nguoiDung == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse("Không tìm thấy thông tin người dùng cho sinh viên này"));
+        }
+
+        // Kiểm tra sinh viên đã có tài khoản chưa
+        if (nguoiDung.getTaiKhoan() != null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Sinh viên này đã có tài khoản"));
+        }
+
+        // Lấy thông tin tài khoản từ request
+        String userId = request.get("userId");
+        String password = request.get("password");
+
+        if (userId == null || userId.isEmpty() || password == null || password.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Vui lòng cung cấp tên đăng nhập và mật khẩu"));
+        }
+
+        // Kiểm tra tài khoản đã tồn tại chưa
+        if (userRepository.existsById(userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Tên đăng nhập đã tồn tại"));
+        }
+
+        try {
+            // Tạo tài khoản mới
+            User newUser = new User(
+                    userId,
+                    passwordEncoder.encode(password),
+                    User.TrangThai.HoatDong
+            );
+            userRepository.save(newUser);
+
+            // Gán tài khoản cho người dùng
+            nguoiDung.setTaiKhoan(newUser);
+            nguoiDungRepository.save(nguoiDung);
+
+            return ResponseEntity.ok(new MessageResponse("Đã thêm tài khoản cho sinh viên thành công"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("Lỗi khi thêm tài khoản: " + e.getMessage()));
+        }
+    }
+
+    // Thêm tài khoản cho giảng viên chưa có tài khoản
+    @PostMapping("/giangvien/{maGV}/taikhoan")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> addTaiKhoanToGiangVien(@PathVariable String maGV, @RequestBody Map<String, String> request) {
+        QuanLy quanLy = getCurrentQuanLy();
+        if (quanLy == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse("Không tìm thấy thông tin quản lý"));
+        }
+
+        // Kiểm tra giảng viên có tồn tại không
+        Optional<GiangVien> giangVienOpt = giangVienRepository.findById(maGV);
+        if (!giangVienOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse("Không tìm thấy giảng viên"));
+        }
+
+        GiangVien giangVien = giangVienOpt.get();
+        NguoiDung nguoiDung = giangVien.getNguoiDung();
+
+        if (nguoiDung == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse("Không tìm thấy thông tin người dùng cho giảng viên này"));
+        }
+
+        // Kiểm tra giảng viên đã có tài khoản chưa
+        if (nguoiDung.getTaiKhoan() != null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Giảng viên này đã có tài khoản"));
+        }
+
+        // Lấy thông tin tài khoản từ request
+        String userId = request.get("userId");
+        String password = request.get("password");
+
+        if (userId == null || userId.isEmpty() || password == null || password.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Vui lòng cung cấp tên đăng nhập và mật khẩu"));
+        }
+
+        // Kiểm tra tài khoản đã tồn tại chưa
+        if (userRepository.existsById(userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse("Tên đăng nhập đã tồn tại"));
+        }
+
+        try {
+            // Tạo tài khoản mới
+            User newUser = new User(
+                    userId,
+                    passwordEncoder.encode(password),
+                    User.TrangThai.HoatDong
+            );
+            userRepository.save(newUser);
+
+            // Gán tài khoản cho người dùng
+            nguoiDung.setTaiKhoan(newUser);
+            nguoiDungRepository.save(nguoiDung);
+
+            return ResponseEntity.ok(new MessageResponse("Đã thêm tài khoản cho giảng viên thành công"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("Lỗi khi thêm tài khoản: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/check/email")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> checkEmailExists(@RequestParam String email, @RequestParam(required = false) String excludeId) {
+        boolean exists;
+        
+        if (excludeId != null && !excludeId.isEmpty()) {
+            // Kiểm tra email tồn tại không tính người dùng hiện tại
+            exists = nguoiDungRepository.findByEmail(email)
+                .map(nguoiDung -> !nguoiDung.getIdNguoiDung().equals(excludeId))
+                .orElse(false);
+        } else {
+            // Kiểm tra email đã tồn tại chưa
+            exists = nguoiDungRepository.existsByEmail(email);
+        }
+        
+        return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    @GetMapping("/check/phone")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> checkPhoneExists(@RequestParam String phone, @RequestParam(required = false) String excludeId) {
+        boolean exists;
+        
+        if (excludeId != null && !excludeId.isEmpty()) {
+            // Kiểm tra số điện thoại tồn tại không tính người dùng hiện tại
+            exists = nguoiDungRepository.findByLienHe(phone)
+                .map(nguoiDung -> !nguoiDung.getIdNguoiDung().equals(excludeId))
+                .orElse(false);
+        } else {
+            // Kiểm tra số điện thoại đã tồn tại chưa
+            exists = nguoiDungRepository.existsByLienHe(phone);
+        }
+        
+        return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    @GetMapping("/check/username")
+    @PreAuthorize("hasRole('QL')")
+    public ResponseEntity<?> checkUsernameExists(@RequestParam String username) {
+        // Kiểm tra tên đăng nhập đã tồn tại chưa
+        boolean exists = userRepository.existsById(username);
+        return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
 }

@@ -981,7 +981,7 @@ const MuonPhongManager = ({
                                 >
                                   Xem chi tiết
                                 </Button>
-                                {yc.trangThai != 'KHONGDUOCDUYET' && !yc.daMuon && (
+                                {yc.trangThai != 'KHONGDUOCDUYET' && !yc.daMuon && new Date(yc.thoiGianMuon) > new Date() && (
                                   <Button
                                     variant="outline-danger"
                                     size="sm"
@@ -1002,8 +1002,6 @@ const MuonPhongManager = ({
                     </tbody>
                   </Table>
                   </div>
-                  
-                  {/* Trả phòng section */}
                   {yeuCauMuonPhong && yeuCauMuonPhong.filter(yc => yc.trangThai === 'DADUYET' && !yc.thoiGianTra).length > 0 && (
                     <div className="mt-3">
                       <h5>Trả phòng</h5>

@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.backend.model.NguoiDung;
 import com.example.backend.model.User;
+import com.example.backend.payload.request.ChangePasswordRequest;
 import com.example.backend.payload.request.LoginRequest;
 import com.example.backend.payload.response.JwtResponse;
 import com.example.backend.payload.response.MessageResponse;
@@ -103,6 +104,34 @@ public class AuthController {
             System.out.println("Error during authentication: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new MessageResponse("Đã xảy ra lỗi trong quá trình đăng nhập"));
+        }
+    }
+    
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
+        try {
+            // Lấy thông tin người dùng hiện tại
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            
+            // Tìm kiếm người dùng trong cơ sở dữ liệu
+            User user = userRepository.findById(userDetails.getId())
+                    .orElseThrow(() -> new Exception("Không tìm thấy người dùng"));
+            
+            // Kiểm tra mật khẩu cũ
+            if (!encoder.matches(changePasswordRequest.getOldPassword(), user.getMatKhau())) {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("Mật khẩu hiện tại không chính xác"));
+            }
+            
+            // Cập nhật mật khẩu mới
+            user.setMatKhau(encoder.encode(changePasswordRequest.getNewPassword()));
+            userRepository.save(user);
+            
+            return ResponseEntity.ok(new MessageResponse("Đổi mật khẩu thành công"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("Đã xảy ra lỗi: " + e.getMessage()));
         }
     }
 }

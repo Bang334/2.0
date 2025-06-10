@@ -12,4 +12,10 @@ public interface NguoiDungRepository extends JpaRepository<NguoiDung, String> {
     Optional<NguoiDung> findByEmail(String email);
     boolean existsByEmail(String email);
     Optional<NguoiDung> findByTaiKhoanId(String taiKhoanId);
+    
+    // Thêm phương thức để tìm người dùng theo số điện thoại
+    Optional<NguoiDung> findByLienHe(String lienHe);
+    
+    // Thêm phương thức để kiểm tra số điện thoại đã tồn tại chưa
+    boolean existsByLienHe(String lienHe);
 } 
