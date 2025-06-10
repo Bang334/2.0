@@ -156,50 +156,18 @@ const SinhVienManager = ({ refreshKey }) => {
   };
 
   // Xử lý thay đổi trên form
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    const newFormData = {
-      ...formData,
-      [name]: value,
-    };
-
-    // Tự động cập nhật email dựa trên mã sinh viên
-    if (name === "maSV") {
-      newFormData.email = value ? `${value.toLowerCase()}@student.ptithcm.edu.vn` : "";
-    }
-
-    setFormData(newFormData);
-    
-    // Kiểm tra validation khi người dùng nhập
-    if (name === "maSV") {
-      const isValidFormat = value === "" || validateMaSVFormat(value);
-      setValidationErrors({
-        ...validationErrors,
-        maSV: !isValidFormat
-      });
-    } else if (name === "hoTen") {
-      const isValidFormat = value === "" || validateHoTenFormat(value);
-      setValidationErrors({
-        ...validationErrors,
-        hoTen: !isValidFormat
-      });
-    } else if (name === "lienHe") {
-      const isValidFormat = value === "" || validationService.validatePhoneFormat(value);
-      setValidationErrors({
-        ...validationErrors,
-        lienHe: !isValidFormat
-      });
-      
-      // Nếu định dạng hợp lệ và đã nhập đủ số, kiểm tra trùng lặp
-      if (isValidFormat && value.length >= 10) {
-        checkDuplicatePhone(value);
-      } else {
-        // Reset trạng thái kiểm tra trùng lặp
-        setDuplicateChecks(prev => ({
-          ...prev,
-          phoneExists: false
-        }));
-      }
+  const handleInputChange = (e, field) => {
+    const value = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    // Reset validation error for the field being changed
+    if (validationErrors[field]) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
     }
   };
   
@@ -264,158 +232,281 @@ const SinhVienManager = ({ refreshKey }) => {
 
   // Thêm sinh viên mới
   const handleAddSinhVien = async () => {
-    if (!formData.maSV || !formData.hoTen || !formData.gioiTinh|| !formData.lienHe || !formData.maLop) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
-      return;
+    // Kiểm tra validation trước khi thêm
+    const errors = {};
+    const { maSV, hoTen, email, lienHe, gioiTinh, maLop } = formData;
+
+    // Kiểm tra null hoặc empty
+    if (!maSV || maSV.trim() === '') {
+      errors.maSV = 'Mã sinh viên không được để trống';
+    } else if (maSV.length < 3 || maSV.length > 10) {
+      errors.maSV = 'Mã sinh viên phải từ 3-10 ký tự';
+    } else if (/\s/.test(maSV)) {
+      errors.maSV = 'Mã sinh viên không được chứa khoảng trắng';
     }
 
-    // Kiểm tra định dạng mã sinh viên
-    if (!validateMaSVFormat(formData.maSV)) {
-      toast.error("Mã sinh viên phải có định dạng (VD: N22DCCN181)");
-      return;
+    if (!hoTen || hoTen.trim() === '') {
+      errors.hoTen = 'Họ tên không được để trống';
+    } else if (hoTen.length < 2 || hoTen.length > 50) {
+      errors.hoTen = 'Họ tên phải từ 2-50 ký tự';
+    } else if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(hoTen)) {
+      errors.hoTen = 'Họ tên chỉ được chứa chữ cái và dấu cách';
     }
 
-    // Kiểm tra định dạng họ tên
-    if (!validateHoTenFormat(formData.hoTen)) {
-      toast.error("Họ tên chỉ được chứa chữ cái và dấu cách, không chứa số hoặc ký tự đặc biệt.");
-      return;
+    if (!email || email.trim() === '') {
+      errors.email = 'Email không được để trống';
+    } else if (!validationService.validateEmailFormat(email)) {
+      errors.email = 'Email không đúng định dạng';
     }
 
-    // Kiểm tra định dạng email
-    if (!validationService.validateEmailFormat(formData.email)) {
-      toast.error("Email không đúng định dạng.");
-      return;
+    if (!lienHe || lienHe.trim() === '') {
+      errors.lienHe = 'Số điện thoại không được để trống';
+    } else if (!/^(0|\+84)\d{9}$/.test(lienHe)) {
+      errors.lienHe = 'Số điện thoại phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx';
     }
 
-    // Kiểm tra định dạng số điện thoại nếu có
-    if (formData.lienHe && !validationService.validatePhoneFormat(formData.lienHe)) {
-      toast.error("Số điện thoại không đúng định dạng. Vui lòng nhập theo định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx");
-      return;
+    if (!gioiTinh || gioiTinh.trim() === '') {
+      errors.gioiTinh = 'Vui lòng chọn giới tính';
     }
-    
-    // Kiểm tra trùng lặp email
-    if (duplicateChecks.emailExists) {
-      toast.error("Email này đã được sử dụng. Vui lòng sử dụng mã sinh viên khác.");
-      return;
+
+    if (!maLop || maLop.trim() === '') {
+      errors.maLop = 'Vui lòng chọn lớp';
     }
-    
-    // Kiểm tra trùng lặp số điện thoại
-    if (formData.lienHe && duplicateChecks.phoneExists) {
-      toast.error("Số điện thoại này đã được sử dụng. Vui lòng sử dụng số điện thoại khác.");
+
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.error('Vui lòng kiểm tra lại các thông tin bắt buộc!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
       return;
     }
 
     // Tạo thông tin tài khoản
     const username = formData.maSV.toLowerCase();
-    let password = "";
-    if (formData.lienHe) {
-      const lastThreeDigits = formData.lienHe.slice(-3);
-      password = `${username}${lastThreeDigits}`;
-    } else {
-      password = username; // Fallback nếu không có số điện thoại
-    }
+    const lastThreeDigits = formData.lienHe.slice(-3);
+    const password = `${username}${lastThreeDigits}`;
 
     // Kiểm tra trùng lặp tên đăng nhập
     try {
       const usernameExists = await validationService.checkUsernameExists(username);
       if (usernameExists) {
-        toast.error("Mã sinh viên này đã được sử dụng làm tên đăng nhập.");
+        toast.error('Mã sinh viên này đã được sử dụng làm tên đăng nhập.');
         return;
       }
     } catch (error) {
-      console.error("Lỗi kiểm tra trùng tên đăng nhập:", error);
-      toast.error("Lỗi khi kiểm tra tên đăng nhập.");
+      console.error('Lỗi kiểm tra trùng tên đăng nhập:', error);
+      toast.error('Lỗi khi kiểm tra tên đăng nhập.');
       return;
     }
 
     try {
       const response = await axios.post(`${API_URL}/sinhvien`, {
         ...formData,
-        hoTen: formData.hoTen.toLowerCase(),
         userId: username,
         password: password
       }, {
         headers: authHeader(),
       });
       setShowAddSinhVienModal(false);
-      toast.success("Sinh viên đã được tạo thành công!");
+      toast.success('Sinh viên đã được tạo thành công!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
       fetchSinhVienList();
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Đã có lỗi xảy ra khi tạo sinh viên."
-      );
+      console.error('Lỗi khi thêm sinh viên:', error);
+      if (error.response) {
+        if (error.response.status === 401) {
+          toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          });
+        } else {
+          toast.error(error.response.data?.message || 'Có lỗi xảy ra khi thêm sinh viên!', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          });
+        }
+      } else if (error.request) {
+        toast.error('Không thể kết nối đến server. Vui lòng thử lại sau.', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
+      } else {
+        toast.error('Có lỗi xảy ra. Vui lòng thử lại sau.', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
+      }
     }
   };
 
   // Hiển thị modal sửa sinh viên
-  const handleShowEditModal = (sinhVien) => {
+  const handleEditSinhVien = (sinhVien) => {
     setCurrentSinhVien(sinhVien);
     setFormData({
       maSV: sinhVien.maSV,
       hoTen: sinhVien.hoTen,
       email: sinhVien.email,
-      lienHe: sinhVien.lienHe || "",
+      lienHe: sinhVien.lienHe,
       gioiTinh: sinhVien.gioiTinh,
-      maLop: sinhVien.maLop || "",
+      maLop: sinhVien.maLop,
     });
+    setValidationErrors({}); // Reset validation errors
     setShowEditModal(true);
   };
 
-  // Cập nhật sinh viên
   const handleUpdateSinhVien = async () => {
-    if (!formData.hoTen || !formData.email) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
-      return;
+    // Kiểm tra validation trước khi cập nhật
+    const errors = {};
+    const { maSV, hoTen, email, lienHe, gioiTinh, maLop } = formData;
+
+    // Kiểm tra null hoặc empty
+    if (!maSV || maSV.trim() === '') {
+      errors.maSV = 'Mã sinh viên không được để trống';
+    } else if (maSV.length < 3 || maSV.length > 10) {
+      errors.maSV = 'Mã sinh viên phải từ 3-10 ký tự';
+    } else if (/\s/.test(maSV)) {
+      errors.maSV = 'Mã sinh viên không được chứa khoảng trắng';
     }
 
-    // Kiểm tra định dạng họ tên
-    if (!validateHoTenFormat(formData.hoTen)) {
-      toast.error("Họ tên chỉ được chứa chữ cái và dấu cách, không chứa số hoặc ký tự đặc biệt.");
-      return;
+    if (!hoTen || hoTen.trim() === '') {
+      errors.hoTen = 'Họ tên không được để trống';
+    } else if (hoTen.length < 2 || hoTen.length > 50) {
+      errors.hoTen = 'Họ tên phải từ 2-50 ký tự';
+    } else if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(hoTen)) {
+      errors.hoTen = 'Họ tên chỉ được chứa chữ cái và dấu cách';
     }
 
-    // Kiểm tra định dạng email
-    if (!validationService.validateEmailFormat(formData.email)) {
-      toast.error("Email không đúng định dạng. Vui lòng kiểm tra lại.");
-      return;
+    if (!email || email.trim() === '') {
+      errors.email = 'Email không được để trống';
+    } else if (!validationService.validateEmailFormat(email)) {
+      errors.email = 'Email không đúng định dạng';
     }
 
-    // Kiểm tra định dạng số điện thoại nếu có
-    if (formData.lienHe && !validationService.validatePhoneFormat(formData.lienHe)) {
-      toast.error("Số điện thoại không đúng định dạng. Vui lòng nhập theo định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx");
-      return;
+    if (!lienHe || lienHe.trim() === '') {
+      errors.lienHe = 'Số điện thoại không được để trống';
+    } else if (!/^(0|\+84)\d{9}$/.test(lienHe)) {
+      errors.lienHe = 'Số điện thoại phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx';
     }
-    
-    // Kiểm tra trùng lặp email
-    if (duplicateChecks.emailExists) {
-      toast.error("Email này đã được sử dụng. Vui lòng sử dụng email khác.");
-      return;
+
+    if (!gioiTinh || gioiTinh.trim() === '') {
+      errors.gioiTinh = 'Vui lòng chọn giới tính';
     }
-    
-    // Kiểm tra trùng lặp số điện thoại
-    if (formData.lienHe && duplicateChecks.phoneExists) {
-      toast.error("Số điện thoại này đã được sử dụng. Vui lòng sử dụng số điện thoại khác.");
+
+    if (!maLop || maLop.trim() === '') {
+      errors.maLop = 'Vui lòng chọn lớp';
+    }
+
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.error('Vui lòng kiểm tra lại các thông tin bắt buộc!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
       return;
     }
 
     try {
-      const requestData = { 
-        ...formData,
-        hoTen: formData.hoTen.toLowerCase()
-      };
       const response = await axios.put(
         `${API_URL}/sinhvien/${currentSinhVien.maSV}`,
-        requestData,
-        { headers: authHeader() }
+        formData,
+        {
+          headers: authHeader(),
+        }
       );
       setShowEditModal(false);
-      toast.success("Cập nhật sinh viên thành công!");
+      toast.success('Sinh viên đã được cập nhật thành công!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
       fetchSinhVienList();
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Đã có lỗi xảy ra khi cập nhật sinh viên."
-      );
+      console.error('Lỗi khi cập nhật sinh viên:', error);
+      if (error.response) {
+        if (error.response.status === 401) {
+          toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          });
+        } else {
+          toast.error(error.response.data?.message || 'Có lỗi xảy ra khi cập nhật sinh viên!', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          });
+        }
+      } else if (error.request) {
+        toast.error('Không thể kết nối đến server. Vui lòng thử lại sau.', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
+      } else {
+        toast.error('Có lỗi xảy ra. Vui lòng thử lại sau.', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
+      }
     }
   };
 
@@ -613,7 +704,7 @@ const SinhVienManager = ({ refreshKey }) => {
                             variant="outline-primary"
                             size="sm"
                             className="me-1"
-                            onClick={() => handleShowEditModal(sinhVien)}
+                            onClick={() => handleEditSinhVien(sinhVien)}
                             title="Sửa thông tin"
                           >
                             <FontAwesomeIcon icon={faEdit} />
@@ -670,7 +761,7 @@ const SinhVienManager = ({ refreshKey }) => {
                     type="text"
                     name="maSV"
                     value={formData.maSV}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange(e, "maSV")}
                     isInvalid={validationErrors.maSV}
                     placeholder="VD: N22DCCN181"
                     required
@@ -688,7 +779,7 @@ const SinhVienManager = ({ refreshKey }) => {
                   <Form.Select
                     name="maLop"
                     value={formData.maLop}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange(e, "maLop")}
                   >
                     <option value="">-- Chọn lớp --</option>
                     {lopHocList.map((lop) => (
@@ -711,7 +802,7 @@ const SinhVienManager = ({ refreshKey }) => {
                     type="text"
                     name="hoTen"
                     value={formData.hoTen}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange(e, "hoTen")}
                     isInvalid={validationErrors.hoTen}
                     required
                   />
@@ -762,7 +853,7 @@ const SinhVienManager = ({ refreshKey }) => {
                     type="text"
                     name="lienHe"
                     value={formData.lienHe}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange(e, "lienHe")}
                     isInvalid={validationErrors.lienHe || duplicateChecks.phoneExists}
                   />
                   {validationErrors.lienHe && (
@@ -790,7 +881,7 @@ const SinhVienManager = ({ refreshKey }) => {
                   <Form.Select
                     name="gioiTinh"
                     value={formData.gioiTinh}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange(e, "gioiTinh")}
                     required
                   >
                     <option value="Nam">Nam</option>
@@ -815,139 +906,110 @@ const SinhVienManager = ({ refreshKey }) => {
       {/* Modal Sửa sinh viên */}
       <Modal
         show={showEditModal}
-        onHide={() => setShowEditModal(false)}
-        backdrop="static"
-        size="lg"
+        onHide={() => {
+          setShowEditModal(false);
+          setValidationErrors({});
+        }}
+        centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Sửa sinh viên {currentSinhVien?.hoTen}</Modal.Title>
+          <Modal.Title>Sửa thông tin sinh viên</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Mã sinh viên</Form.Label>
-                  <Form.Control type="text" value={formData.maSV} disabled />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Lớp</Form.Label>
-                  <Form.Select
-                    name="maLop"
-                    value={formData.maLop}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">-- Chọn lớp --</option>
-                    {lopHocList.map((lop) => (
-                      <option key={lop.maLop} value={lop.maLop}>
-                        {lop.tenLop} ({lop.maLop})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Mã sinh viên</Form.Label>
+              <Form.Control
+                type="text"
+                value={formData.maSV}
+                disabled
+                isInvalid={!!validationErrors.maSV}
+              />
+              <Form.Control.Feedback type="invalid">
+                {validationErrors.maSV}
+              </Form.Control.Feedback>
+            </Form.Group>
 
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Họ tên <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="hoTen"
-                    value={formData.hoTen}
-                    onChange={handleInputChange}
-                    isInvalid={validationErrors.hoTen}
-                    required
-                  />
-                  {validationErrors.hoTen && (
-                    <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faExclamationTriangle} /> Họ tên chỉ được chứa chữ cái và dấu cách
-                    </Form.Control.Feedback>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Email <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    readOnly
-                    isInvalid={validationErrors.email || duplicateChecks.emailExists}
-                    required
-                  />
-                  {validationErrors.email && (
-                    <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faExclamationTriangle} /> Email không đúng định dạng
-                    </Form.Control.Feedback>
-                  )}
-                  {!validationErrors.email && duplicateChecks.emailExists && (
-                    <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faInfoCircle} /> Email này đã được sử dụng
-                    </Form.Control.Feedback>
-                  )}
-                </Form.Group>
-              </Col>
-            </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Họ tên</Form.Label>
+              <Form.Control
+                type="text"
+                value={formData.hoTen}
+                onChange={(e) => handleInputChange(e, "hoTen")}
+                isInvalid={!!validationErrors.hoTen}
+              />
+              <Form.Control.Feedback type="invalid">
+                {validationErrors.hoTen}
+              </Form.Control.Feedback>
+            </Form.Group>
 
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Số điện thoại</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="lienHe"
-                    value={formData.lienHe}
-                    onChange={handleInputChange}
-                    isInvalid={validationErrors.lienHe || duplicateChecks.phoneExists}
-                  />
-                  {validationErrors.lienHe && (
-                    <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faExclamationTriangle} /> Số điện thoại không đúng định dạng (VD: 0912345678)
-                    </Form.Control.Feedback>
-                  )}
-                  {!validationErrors.lienHe && duplicateChecks.phoneExists && (
-                    <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faInfoCircle} /> Số điện thoại này đã được sử dụng
-                    </Form.Control.Feedback>
-                  )}
-                  {duplicateChecks.isChecking && formData.lienHe && formData.lienHe.length >= 10 && (
-                    <div className="mt-1">
-                      <Spinner animation="border" size="sm" /> Đang kiểm tra...
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Giới tính <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Select
-                    name="gioiTinh"
-                    value={formData.gioiTinh}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="Nam">Nam</option>
-                    <option value="Nu">Nữ</option>
-                    <option value="KhongXacDinh">Không xác định</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control
+                type="email"
+                value={formData.email}
+                disabled
+                isInvalid={!!validationErrors.email}
+              />
+              <Form.Control.Feedback type="invalid">
+                {validationErrors.email}
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Số điện thoại</Form.Label>
+              <Form.Control
+                type="text"
+                value={formData.lienHe}
+                onChange={(e) => handleInputChange(e, "lienHe")}
+                isInvalid={!!validationErrors.lienHe}
+              />
+              <Form.Control.Feedback type="invalid">
+                {validationErrors.lienHe}
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Giới tính</Form.Label>
+              <Form.Select
+                value={formData.gioiTinh}
+                onChange={(e) => handleInputChange(e, "gioiTinh")}
+                isInvalid={!!validationErrors.gioiTinh}
+              >
+                <option value="">Chọn giới tính</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+              </Form.Select>
+              <Form.Control.Feedback type="invalid">
+                {validationErrors.gioiTinh}
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Lớp</Form.Label>
+              <Form.Select
+                value={formData.maLop}
+                onChange={(e) => handleInputChange(e, "maLop")}
+                isInvalid={!!validationErrors.maLop}
+              >
+                <option value="">Chọn lớp</option>
+                {lopHocList.map((lop) => (
+                  <option key={lop.maLop} value={lop.maLop}>
+                    {lop.tenLop}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Control.Feedback type="invalid">
+                {validationErrors.maLop}
+              </Form.Control.Feedback>
+            </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+          <Button variant="secondary" onClick={() => {
+            setShowEditModal(false);
+            setValidationErrors({});
+          }}>
             Hủy
           </Button>
           <Button variant="primary" onClick={handleUpdateSinhVien}>

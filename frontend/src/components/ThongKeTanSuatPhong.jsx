@@ -4,7 +4,7 @@ import { Line, Pie } from 'react-chartjs-2';
 import dayjs from 'dayjs';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import { DownloadOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -255,98 +255,102 @@ const ThongKeTanSuatPhong = () => {
 
   // Chuẩn bị dữ liệu để xuất ra Excel
   const prepareExcelData = () => {
-    console.log("prepareExcelData: thongKeData nhận được:", thongKeData);
+    if (!thongKeData) return null;
 
-    if (!thongKeData) {
-      console.log("prepareExcelData: thongKeData là null hoặc undefined.");
-      return {
-        overview: [['Không có dữ liệu thống kê']],
-        roomData: [['Không có dữ liệu thống kê']],
-        timeData: [['Không có dữ liệu thống kê']]
-      };
-    }
-
-    // Dữ liệu tổng quan
-    const overviewData = [
-      ['Thống kê tần suất sử dụng phòng', ''],
-      ['Loại thống kê', filters.loaiThongKe === 'TUAN' ? 'Theo tuần' : filters.loaiThongKe === 'THANG' ? 'Theo tháng' : 'Theo năm'],
-      ['Từ ngày', filters.tuNgay ? dayjs(filters.tuNgay).format('DD/MM/YYYY') : 'Không xác định'],
-      ['Đến ngày', filters.denNgay ? dayjs(filters.denNgay).format('DD/MM/YYYY') : 'Không xác định'],
-      ['Ngày xuất báo cáo', dayjs().format('DD/MM/YYYY HH:mm:ss')],
-      ['', ''],
-    ];
-
-    // Dữ liệu thống kê theo phòng
-    const roomData = [['Mã phòng', 'Số lần được mượn']];
-    if (thongKeData.thongKeTheoPhong) {
-      Object.entries(thongKeData.thongKeTheoPhong)
-        .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
-        .forEach(([room, count]) => {
-          roomData.push([`Phòng ${room}`, count]);
-        });
-    }
-    console.log("prepareExcelData: roomData đã chuẩn bị:", roomData);
-
-    // Dữ liệu thống kê theo thời gian
+    // Chuẩn bị dữ liệu cho sheet thống kê theo thời gian
     const timeData = [];
-    if (thongKeData.thongKeTheoThoiGian && thongKeData.thongKeTheoThoiGian.length > 0) {
-      // Tạo header với tên phòng
-      const timeHeader = ['Thời gian'];
-      // Thay đổi: Sử dụng keys từ thongKeTheoPhong để đảm bảo lấy đủ tất cả các phòng
-      const roomList = Object.keys(thongKeData.thongKeTheoPhong || {}).sort(); 
-      
-      roomList.forEach(room => {
-        timeHeader.push(`Phòng ${room}`);
-      });
-      timeHeader.push('Tổng số lần mượn');
-      timeData.push(timeHeader);
+    const headers = ['Thời gian', 'Tổng số lần mượn', ...thongKeData.danhSachPhong];
+    timeData.push(headers);
 
-      // Thêm dữ liệu cho từng thời điểm
-      thongKeData.thongKeTheoThoiGian.forEach(item => {
-        const row = [item.thoiGian];
-        let total = 0;
-        
-        roomList.forEach(room => {
-          const count = item[room] || 0;
-          row.push(count);
-          total += count;
-        });
-        
-        row.push(total);
-        timeData.push(row);
-      });
-    }
-    console.log("prepareExcelData: timeData đã chuẩn bị:", timeData);
+    thongKeData.thongKeTheoThoiGian.forEach(item => {
+      const row = [
+        item.thoiGian,
+        item.tongSoLanMuon,
+        ...thongKeData.danhSachPhong.map(phong => item[phong] || 0)
+      ];
+      timeData.push(row);
+    });
+
+    // Chuẩn bị dữ liệu cho sheet thống kê theo phòng
+    const roomData = [];
+    roomData.push(['Phòng', 'Số lần được mượn', 'Tỉ lệ (%)']);
+    
+    const totalRooms = Object.values(thongKeData.thongKeTheoPhong).reduce((a, b) => a + b, 0);
+    Object.entries(thongKeData.thongKeTheoPhong).forEach(([phong, soLan]) => {
+      const tiLe = ((soLan / totalRooms) * 100).toFixed(2);
+      roomData.push([phong, soLan, `${tiLe}%`]);
+    });
 
     return {
-      overview: overviewData,
-      roomData: roomData,
-      timeData: timeData
+      timeData,
+      roomData
     };
   };
 
   // Xuất dữ liệu ra file Excel
   const exportToExcel = () => {
-    const { overview, roomData, timeData } = prepareExcelData();
-    console.log("exportToExcel: Dữ liệu cuối cùng để xuất Excel: ", { overview, roomData, timeData });
-    
+    const data = prepareExcelData();
+    if (!data) return;
+
     // Tạo workbook mới
     const wb = XLSX.utils.book_new();
+
+    // Định dạng cho header
+    const headerStyle = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4F81BD" } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" }
+      }
+    };
+
+    // Định dạng cho dữ liệu
+    const dataStyle = {
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" }
+      }
+    };
+
+    // Tạo worksheet cho thống kê theo thời gian
+    const ws1 = XLSX.utils.aoa_to_sheet(data.timeData);
     
-    // Tạo worksheets
-    const overviewWS = XLSX.utils.aoa_to_sheet(overview);
-    const roomWS = XLSX.utils.aoa_to_sheet(roomData);
-    const timeWS = XLSX.utils.aoa_to_sheet(timeData);
+    // Áp dụng định dạng cho worksheet 1
+    const range1 = XLSX.utils.decode_range(ws1['!ref']);
+    for (let R = range1.s.r; R <= range1.e.r; R++) {
+      for (let C = range1.s.c; C <= range1.e.c; C++) {
+        const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws1[cell_address]) ws1[cell_address] = { v: "" };
+        ws1[cell_address].s = R === 0 ? headerStyle : dataStyle;
+      }
+    }
+
+    // Tạo worksheet cho thống kê theo phòng
+    const ws2 = XLSX.utils.aoa_to_sheet(data.roomData);
     
-    // Thêm worksheets vào workbook
-    XLSX.utils.book_append_sheet(wb, overviewWS, "Tổng quan");
-    XLSX.utils.book_append_sheet(wb, roomWS, "Thống kê theo phòng");
-    XLSX.utils.book_append_sheet(wb, timeWS, "Thống kê theo thời gian");
-    
-    // Tạo tên file với ngày giờ hiện tại
-    const fileName = `Thong_ke_tan_suat_phong_${dayjs().format('YYYYMMDD_HHmmss')}.xlsx`;
-    
+    // Áp dụng định dạng cho worksheet 2
+    const range2 = XLSX.utils.decode_range(ws2['!ref']);
+    for (let R = range2.s.r; R <= range2.e.r; R++) {
+      for (let C = range2.s.c; C <= range2.e.c; C++) {
+        const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws2[cell_address]) ws2[cell_address] = { v: "" };
+        ws2[cell_address].s = R === 0 ? headerStyle : dataStyle;
+      }
+    }
+
+    // Thêm các worksheet vào workbook
+    XLSX.utils.book_append_sheet(wb, ws1, "Thống kê theo thời gian");
+    XLSX.utils.book_append_sheet(wb, ws2, "Thống kê theo phòng");
+
     // Xuất file Excel
+    const fileName = `ThongKeTanSuatPhong_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 

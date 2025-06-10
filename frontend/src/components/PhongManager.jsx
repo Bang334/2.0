@@ -35,7 +35,8 @@ import {
   faDesktop,
 } from "@fortawesome/free-solid-svg-icons";
 import PhongThietBiManager from "./PhongThietBiManager";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const ADMIN_API_URL = "http://localhost:8080/api/quanly";
 
@@ -67,6 +68,14 @@ const PhongManager = () => {
   });
   const [filter, setFilter] = useState("ALL");
   const [activeTab, setActiveTab] = useState('all');
+  const [validationErrors, setValidationErrors] = useState({
+    maPhong: false,
+    sucChua: false,
+    viTri: false
+  });
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
   // Lấy danh sách phòng học khi component được render
   useEffect(() => {
     fetchPhongList();
@@ -100,7 +109,9 @@ const PhongManager = () => {
       setLoading(false);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách phòng học:", error);
-      toast.error("Không thể lấy danh sách phòng học. Vui lòng thử lại sau.");
+      toast.error("Không thể lấy danh sách phòng học. Vui lòng thử lại sau.", {
+        containerId: "phongManagerToast"
+      });
       setPhongList([]); // Set empty array on error
       setLoading(false);
     }
@@ -175,11 +186,40 @@ const PhongManager = () => {
   // Xử lý thay đổi trên form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Validate dữ liệu khi người dùng nhập
+    if (name === 'maPhong') {
+      const isValid = value.trim() !== '';
+      setValidationErrors(prev => ({
+        ...prev,
+        maPhong: !isValid
+      }));
+    } else if (name === 'sucChua') {
+      const isValid = value !== '' && !isNaN(parseInt(value, 10)) && parseInt(value, 10) > 0;
+      setValidationErrors(prev => ({
+        ...prev,
+        sucChua: !isValid
+      }));
+    } else if (name === 'viTri') {
+      const isValid = value.trim() !== '';
+      setValidationErrors(prev => ({
+        ...prev,
+        viTri: !isValid
+      }));
+    }
+
     setFormData({
       ...formData,
-      [name]:
-        name === "sucChua" ? (value === "" ? "" : parseInt(value, 10)) : value,
+      [name]: value,
     });
+  };
+
+  // Sửa lại hàm kiểm tra vị trí trùng lặp
+  const checkViTriTrungLap = (viTri, maPhongHienTai = null) => {
+    return phongList.some(phong => 
+      phong.viTri === viTri && 
+      (maPhongHienTai ? phong.maPhong !== maPhongHienTai : true)
+    );
   };
 
   // Hiển thị modal thêm phòng học mới
@@ -194,15 +234,30 @@ const PhongManager = () => {
     setShowAddModal(true);
   };
 
-  // Thêm phòng học mới
+  // Cập nhật hàm handleAddPhong
   const handleAddPhong = async () => {
-    if (!formData.maPhong || !formData.viTri) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
+    // Reset messages
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    // Kiểm tra validation
+    const errors = {
+      maPhong: !formData.maPhong.trim(),
+      sucChua: !formData.sucChua || isNaN(parseInt(formData.sucChua, 10)) || parseInt(formData.sucChua, 10) <= 0,
+      viTri: !formData.viTri.trim()
+    };
+
+    setValidationErrors(errors);
+
+    // Nếu có lỗi validation, hiển thị thông báo và dừng
+    if (Object.values(errors).some(error => error)) {
+      setErrorMessage("Vui lòng điền đầy đủ và chính xác thông tin bắt buộc.");
       return;
     }
 
-    if (!formData.sucChua || isNaN(parseInt(formData.sucChua, 10))) {
-      toast.error("Vui lòng nhập sức chứa là một số hợp lệ.");
+    // Kiểm tra vị trí trùng lặp (không cần bỏ qua phòng nào vì đang thêm mới)
+    if (checkViTriTrungLap(formData.viTri)) {
+      setErrorMessage("Vị trí này đã được sử dụng cho một phòng học khác. Vui lòng chọn vị trí khác.");
       return;
     }
 
@@ -215,13 +270,19 @@ const PhongManager = () => {
       const response = await axios.post(`${ADMIN_API_URL}/phong`, requestData, {
         headers: authHeader(),
       });
-      setShowAddModal(false);
-      toast.success("Phòng học đã được tạo thành công!");
-      fetchPhongList();
+      
+      // Hiển thị thông báo thành công trước khi đóng modal
+      setSuccessMessage("Phòng học đã được tạo thành công!");
+      
+      // Đóng modal sau 1.5 giây để người dùng thấy thông báo
+      setTimeout(() => {
+        setShowAddModal(false);
+        setSuccessMessage('');
+        fetchPhongList();
+      }, 1500);
+
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Đã có lỗi xảy ra khi tạo phòng học."
-      );
+      setErrorMessage(error.response?.data?.message || "Đã có lỗi xảy ra khi tạo phòng học.");
     }
   };
 
@@ -239,13 +300,27 @@ const PhongManager = () => {
   };
   // Cập nhật phòng học
   const handleUpdatePhong = async () => {
-    if (!formData.viTri) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
+    // Reset messages
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    // Kiểm tra validation
+    const errors = {
+      sucChua: !formData.sucChua || isNaN(parseInt(formData.sucChua, 10)) || parseInt(formData.sucChua, 10) <= 0,
+      viTri: !formData.viTri.trim()
+    };
+
+    setValidationErrors(errors);
+
+    // Nếu có lỗi validation, hiển thị thông báo và dừng
+    if (Object.values(errors).some(error => error)) {
+      setErrorMessage("Vui lòng điền đầy đủ và chính xác thông tin bắt buộc.");
       return;
     }
 
-    if (!formData.sucChua || isNaN(parseInt(formData.sucChua, 10))) {
-      toast.error("Vui lòng nhập sức chứa là một số hợp lệ.");
+    // Kiểm tra vị trí trùng lặp (bỏ qua phòng hiện tại)
+    if (checkViTriTrungLap(formData.viTri, currentPhong.maPhong)) {
+      setErrorMessage("Vị trí này đã được sử dụng cho một phòng học khác. Vui lòng chọn vị trí khác.");
       return;
     }
 
@@ -255,19 +330,24 @@ const PhongManager = () => {
         sucChua: parseInt(formData.sucChua, 10),
       };
 
-      const response = await axios.put(
+      await axios.put(
         `${ADMIN_API_URL}/phong/${currentPhong.maPhong}`,
         requestData,
         { headers: authHeader() }
       );
-      setShowEditModal(false);
-      toast.success("Cập nhật phòng học thành công!");
-      fetchPhongList();
+
+      // Hiển thị thông báo thành công trước khi đóng modal
+      setSuccessMessage("Cập nhật phòng học thành công!");
+      
+      // Đóng modal sau 1.5 giây để người dùng thấy thông báo
+      setTimeout(() => {
+        setShowEditModal(false);
+        setSuccessMessage('');
+        fetchPhongList();
+      }, 1500);
+
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Đã có lỗi xảy ra khi cập nhật phòng học."
-      );
+      setErrorMessage(error.response?.data?.message || "Đã có lỗi xảy ra khi cập nhật phòng học.");
     }
   };
 
@@ -278,18 +358,26 @@ const PhongManager = () => {
   };
 
   // Xóa phòng học
-  const handleDeletePhong = async () => {
+  const handleDeletePhong = async (maPhong) => {
     try {
-      await axios.delete(`${ADMIN_API_URL}/phong/${currentPhong.maPhong}`, {
+      await axios.delete(`${ADMIN_API_URL}/phong/${maPhong}`, {
         headers: authHeader(),
       });
       setShowConfirmModal(false);
-      toast.success("Phòng học đã được xóa thành công!");
+      toast.success("Phòng học đã được xóa thành công!", {
+        containerId: "phongManagerToast"
+      });
       fetchPhongList();
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Đã có lỗi xảy ra khi xóa phòng học."
-      );
+      if (error.response?.status === 409) {
+        toast.warning("Không thể xóa phòng học này vì đang có phân công mượn phòng.", {
+          containerId: "phongManagerToast"
+        });
+      } else {
+        toast.error(error.response?.data?.message || "Đã có lỗi xảy ra khi xóa phòng học.", {
+          containerId: "phongManagerToast"
+        });
+      }
       setShowConfirmModal(false);
     }
   };
@@ -462,6 +550,20 @@ const PhongManager = () => {
 
   return (
     <Container>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        containerId="phongManagerToast"
+      />
+
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Quản lý phòng học</h5>
@@ -799,13 +901,27 @@ const PhongManager = () => {
       {/* Modal Thêm phòng học */}
       <Modal
         show={showAddModal}
-        onHide={() => setShowAddModal(false)}
+        onHide={() => {
+          setShowAddModal(false);
+          setErrorMessage('');
+          setSuccessMessage('');
+        }}
         backdrop="static"
       >
         <Modal.Header closeButton>
           <Modal.Title>Thêm phòng học mới</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {errorMessage && (
+            <Alert variant="danger" onClose={() => setErrorMessage('')} dismissible>
+              {errorMessage}
+            </Alert>
+          )}
+          {successMessage && (
+            <Alert variant="success" onClose={() => setSuccessMessage('')} dismissible>
+              {successMessage}
+            </Alert>
+          )}
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>
@@ -816,8 +932,14 @@ const PhongManager = () => {
                 name="maPhong"
                 value={formData.maPhong}
                 onChange={handleInputChange}
+                isInvalid={validationErrors.maPhong}
                 required
               />
+              {validationErrors.maPhong && (
+                <Form.Control.Feedback type="invalid">
+                  Vui lòng nhập mã phòng
+                </Form.Control.Feedback>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3">
@@ -844,10 +966,16 @@ const PhongManager = () => {
                 name="sucChua"
                 value={formData.sucChua}
                 onChange={handleInputChange}
-                min="0"
+                min="1"
                 step="1"
+                isInvalid={validationErrors.sucChua}
                 required
               />
+              {validationErrors.sucChua && (
+                <Form.Control.Feedback type="invalid">
+                  Vui lòng nhập số lượng người hợp lệ (lớn hơn 0)
+                </Form.Control.Feedback>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3">
@@ -860,13 +988,23 @@ const PhongManager = () => {
                 value={formData.viTri}
                 onChange={handleInputChange}
                 placeholder="Ví dụ: Tầng 2, Tòa A"
+                isInvalid={validationErrors.viTri}
                 required
               />
+              {validationErrors.viTri && (
+                <Form.Control.Feedback type="invalid">
+                  Vui lòng nhập vị trí phòng
+                </Form.Control.Feedback>
+              )}
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAddModal(false)}>
+          <Button variant="secondary" onClick={() => {
+            setShowAddModal(false);
+            setErrorMessage('');
+            setSuccessMessage('');
+          }}>
             Hủy
           </Button>
           <Button variant="primary" onClick={handleAddPhong}>
@@ -878,13 +1016,27 @@ const PhongManager = () => {
       {/* Modal Sửa phòng học */}
       <Modal
         show={showEditModal}
-        onHide={() => setShowEditModal(false)}
+        onHide={() => {
+          setShowEditModal(false);
+          setErrorMessage('');
+          setSuccessMessage('');
+        }}
         backdrop="static"
       >
         <Modal.Header closeButton>
           <Modal.Title>Sửa phòng học {currentPhong?.maPhong}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {errorMessage && (
+            <Alert variant="danger" onClose={() => setErrorMessage('')} dismissible>
+              {errorMessage}
+            </Alert>
+          )}
+          {successMessage && (
+            <Alert variant="success" onClose={() => setSuccessMessage('')} dismissible>
+              {successMessage}
+            </Alert>
+          )}
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Mã phòng</Form.Label>
@@ -953,7 +1105,11 @@ const PhongManager = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+          <Button variant="secondary" onClick={() => {
+            setShowEditModal(false);
+            setErrorMessage('');
+            setSuccessMessage('');
+          }}>
             Hủy
           </Button>
           <Button variant="primary" onClick={handleUpdatePhong}>
@@ -991,7 +1147,7 @@ const PhongManager = () => {
           </Button>
           <Button
             variant="danger"
-            onClick={handleDeletePhong}
+            onClick={() => handleDeletePhong(currentPhong.maPhong)}
             disabled={currentPhong?.trangThai === "DANGSUDUNG"}
           >
             Xóa phòng học
