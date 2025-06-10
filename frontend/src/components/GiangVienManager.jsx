@@ -3,8 +3,8 @@ import { Container, Row, Col, Card, Table, Button, Form, Modal, Badge, ProgressB
 import axios from "axios";
 import authHeader from "../services/auth-header";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash, faSearch, faKey, faChartBar, faUser, faUsers, faUserPlus, faUserLock, faExclamationTriangle, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { toast } from "react-toastify";
+import { faEdit, faTrash, faSearch, faChartBar, faUserPlus, faExclamationTriangle, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { toast,ToastContainer } from "react-toastify";
 import validationService from "../services/validation.service";
 
 const API_URL = "http://localhost:8080/api/quanly";
@@ -14,17 +14,10 @@ const GiangVienManager = ({ refreshKey }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
   const [currentGiangVien, setCurrentGiangVien] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showTaiKhoanForm, setShowTaiKhoanForm] = useState(false);
-  const [khoaList, setKhoaList] = useState([]);
   const [showAddGiangVienModal, setShowAddGiangVienModal] = useState(false);
-  const [accountFormData, setAccountFormData] = useState({
-    userId: "",
-    password: "",
-  });
   const [formData, setFormData] = useState({
     maGV: "",
     hoTen: "",
@@ -32,29 +25,34 @@ const GiangVienManager = ({ refreshKey }) => {
     lienHe: "",
     gioiTinh: "Nam",
     khoa: "",
-    userId: "",
-    password: "",
   });
   const [statsData, setStatsData] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [giangVienAccounts, setGiangVienAccounts] = useState({});
-  
+
+  // Predefined faculty list
+  const khoaList = [
+    "Viễn thông 2",
+    "Kỹ thuật Điện tử 2",
+    "Công nghệ Thông tin 2",
+    "Quản trị Kinh doanh 2",
+    "Cơ bản 2",
+  ];
+
   // State để theo dõi lỗi validation
   const [validationErrors, setValidationErrors] = useState({
+    maGV: false,
     email: false,
-    lienHe: false
+    lienHe: false,
   });
-  
+
   // State để theo dõi trùng lặp
   const [duplicateChecks, setDuplicateChecks] = useState({
+    maGVExists: false,
     emailExists: false,
     phoneExists: false,
-    usernameExists: false,
-    isChecking: false
+    isChecking: false,
   });
-  
-  // State để theo dõi trùng lặp tên đăng nhập trong form thêm tài khoản
-  const [accountUsernameDuplicate, setAccountUsernameDuplicate] = useState(false);
 
   // Lấy danh sách giảng viên khi component được render
   useEffect(() => {
@@ -75,55 +73,38 @@ const GiangVienManager = ({ refreshKey }) => {
     try {
       const response = await axios.get(`${API_URL}/giangvien`, { headers: authHeader() });
       setGiangVienList(response.data);
-      
-      // Lấy danh sách khoa từ dữ liệu giảng viên
-      extractKhoaList(response.data);
-      
-      // Kiểm tra tài khoản cho từng giảng viên
       checkGiangVienAccounts(response.data);
-      
       setLoading(false);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách giảng viên:", error);
-      toast.error("Không thể lấy danh sách giảng viên. Vui lòng thử lại sau.");
+      toast.error("Không thể lấy danh sách giảng viên. Vui lòng thử lại sau.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       setLoading(false);
     }
   };
-  
-  // Trích xuất danh sách khoa từ dữ liệu giảng viên
-  const extractKhoaList = (giangVienData) => {
-    // Lấy các giá trị khoa duy nhất từ danh sách giảng viên
-    const uniqueKhoa = [...new Set(
-      giangVienData
-        .filter(gv => gv.khoa && gv.khoa.trim() !== '')
-        .map(gv => gv.khoa)
-    )].sort();
-    
-    setKhoaList(uniqueKhoa);
-  };
-  
+
   // Kiểm tra tài khoản cho từng giảng viên
   const checkGiangVienAccounts = async (giangVienData) => {
     try {
-      // Lấy danh sách tất cả tài khoản
       const response = await axios.get(`${API_URL}/taikhoan`, {
         headers: authHeader(),
       });
-      
       const taiKhoanList = response.data;
       const accountsMap = {};
-      
-      // Tạo map để kiểm tra nhanh hơn
       giangVienData.forEach(gv => {
-        // Tìm xem idNguoiDung của giảng viên có trong danh sách tài khoản không
         const taiKhoan = taiKhoanList.find(tk => tk.idNguoiDung === gv.idNguoiDung);
         accountsMap[gv.idNguoiDung] = taiKhoan ? true : false;
       });
-      
       console.log("Thông tin tài khoản giảng viên:", accountsMap);
       setGiangVienAccounts(accountsMap);
     } catch (error) {
       console.error("Lỗi khi kiểm tra tài khoản giảng viên:", error);
+      toast.error("Không thể kiểm tra tài khoản giảng viên.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
     }
   };
 
@@ -136,6 +117,10 @@ const GiangVienManager = ({ refreshKey }) => {
       setStatsLoading(false);
     } catch (error) {
       console.error("Lỗi khi lấy thống kê giảng viên:", error);
+      toast.error("Không thể lấy thống kê giảng viên.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       setStatsLoading(false);
     }
   };
@@ -143,130 +128,120 @@ const GiangVienManager = ({ refreshKey }) => {
   // Xử lý thay đổi trên form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // Kiểm tra validation khi người dùng nhập
-    if (name === 'email') {
-      const isValidFormat = value === "" || validationService.validateEmailFormat(value);
+    let newValue = value;
+
+    if (name === 'maGV') {
+      const isValidFormat = !/\s/.test(value);
       setValidationErrors({
         ...validationErrors,
-        email: !isValidFormat
+        maGV: !isValidFormat,
       });
-      
-      // Nếu định dạng hợp lệ và đã nhập đủ 3 ký tự, kiểm tra trùng lặp
+      if (isValidFormat && value.length >= 3) {
+        checkDuplicateMaGV(value);
+      } else {
+        setDuplicateChecks((prev) => ({
+          ...prev,
+          maGVExists: false,
+        }));
+      }
+    } else if (name === 'email') {
+      const isValidFormat = value === "" || (validationService.validateEmailFormat(value) && value.endsWith('@gmail.com'));
+      setValidationErrors({
+        ...validationErrors,
+        email: !isValidFormat,
+      });
       if (isValidFormat && value.length >= 3) {
         checkDuplicateEmail(value);
       } else {
-        // Reset trạng thái kiểm tra trùng lặp
-        setDuplicateChecks(prev => ({
+        setDuplicateChecks((prev) => ({
           ...prev,
-          emailExists: false
+          emailExists: false,
         }));
       }
     } else if (name === 'lienHe') {
-      const isValidFormat = value === "" || validationService.validatePhoneFormat(value);
+      const isValidFormat = value === "" || /^(0|\+84)\d{9}$/.test(value);
       setValidationErrors({
         ...validationErrors,
-        lienHe: !isValidFormat
+        lienHe: !isValidFormat,
       });
-      
-      // Nếu định dạng hợp lệ và đã nhập đủ số, kiểm tra trùng lặp
       if (isValidFormat && value.length >= 10) {
         checkDuplicatePhone(value);
       } else {
-        // Reset trạng thái kiểm tra trùng lặp
-        setDuplicateChecks(prev => ({
+        setDuplicateChecks((prev) => ({
           ...prev,
-          phoneExists: false
-        }));
-      }
-    } else if (name === 'userId') {
-      // Nếu đã nhập đủ 3 ký tự, kiểm tra trùng lặp
-      if (value.length >= 3) {
-        checkDuplicateUsername(value);
-      } else {
-        // Reset trạng thái kiểm tra trùng lặp
-        setDuplicateChecks(prev => ({
-          ...prev,
-          usernameExists: false
+          phoneExists: false,
         }));
       }
     }
+
+    setFormData({
+      ...formData,
+      [name]: newValue,
+    });
   };
-  
+
+  // Kiểm tra mã giảng viên đã tồn tại chưa
+  const checkDuplicateMaGV = async (maGV) => {
+    if (!maGV) return;
+    setDuplicateChecks(prev => ({ ...prev, isChecking: true }));
+    try {
+      const excludeId = currentGiangVien ? currentGiangVien.idNguoiDung : null;
+      const exists = await validationService.checkMaGVExists(maGV.toLowerCase(), excludeId);
+      setDuplicateChecks(prev => ({
+        ...prev,
+        maGVExists: exists,
+        isChecking: false,
+      }));
+    } catch (error) {
+      console.error("Lỗi kiểm tra trùng mã giảng viên:", error);
+      setDuplicateChecks(prev => ({ ...prev, isChecking: false }));
+      toast.error("Lỗi kiểm tra mã giảng viên.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+    }
+  };
+
   // Kiểm tra email đã tồn tại chưa
   const checkDuplicateEmail = async (email) => {
     if (!email) return;
-    
     setDuplicateChecks(prev => ({ ...prev, isChecking: true }));
     try {
-      // Nếu đang chỉnh sửa, loại trừ ID hiện tại
       const excludeId = currentGiangVien ? currentGiangVien.idNguoiDung : null;
       const exists = await validationService.checkEmailExists(email, excludeId);
-      
       setDuplicateChecks(prev => ({
         ...prev,
         emailExists: exists,
-        isChecking: false
+        isChecking: false,
       }));
     } catch (error) {
       console.error("Lỗi kiểm tra trùng email:", error);
       setDuplicateChecks(prev => ({ ...prev, isChecking: false }));
+      toast.error("Lỗi kiểm tra email.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
     }
   };
-  
+
   // Kiểm tra số điện thoại đã tồn tại chưa
   const checkDuplicatePhone = async (phone) => {
     if (!phone) return;
-    
     setDuplicateChecks(prev => ({ ...prev, isChecking: true }));
     try {
-      // Nếu đang chỉnh sửa, loại trừ ID hiện tại
       const excludeId = currentGiangVien ? currentGiangVien.idNguoiDung : null;
       const exists = await validationService.checkPhoneExists(phone, excludeId);
-      
       setDuplicateChecks(prev => ({
         ...prev,
         phoneExists: exists,
-        isChecking: false
+        isChecking: false,
       }));
     } catch (error) {
       console.error("Lỗi kiểm tra trùng số điện thoại:", error);
       setDuplicateChecks(prev => ({ ...prev, isChecking: false }));
-    }
-  };
-
-  // Kiểm tra tên đăng nhập đã tồn tại chưa
-  const checkDuplicateUsername = async (username) => {
-    if (!username) return;
-    
-    setDuplicateChecks(prev => ({ ...prev, isChecking: true }));
-    try {
-      const exists = await validationService.checkUsernameExists(username);
-      
-      setDuplicateChecks(prev => ({
-        ...prev,
-        usernameExists: exists,
-        isChecking: false
-      }));
-    } catch (error) {
-      console.error("Lỗi kiểm tra trùng tên đăng nhập:", error);
-      setDuplicateChecks(prev => ({ ...prev, isChecking: false }));
-    }
-  };
-
-  // Toggle form tài khoản
-  const handleToggleTaiKhoanForm = () => {
-    setShowTaiKhoanForm(!showTaiKhoanForm);
-    if (!showTaiKhoanForm) {
-      // Reset trường tài khoản khi hiển thị form
-      setFormData({
-        ...formData,
-        userId: "",
-        password: ""
+      toast.error("Lỗi kiểm tra số điện thoại.", {
+        position: "top-center",
+        autoClose: 3000,
       });
     }
   };
@@ -281,64 +256,96 @@ const GiangVienManager = ({ refreshKey }) => {
       lienHe: giangVien.lienHe || "",
       gioiTinh: giangVien.gioiTinh,
       khoa: giangVien.khoa,
-      password: "" // Password luôn trống khi sửa
     });
-    setShowTaiKhoanForm(false);
+    setValidationErrors({
+      maGV: false,
+      email: false,
+      lienHe: false,
+    });
+    setDuplicateChecks({
+      maGVExists: false,
+      emailExists: false,
+      phoneExists: false,
+      isChecking: false,
+    });
     setShowEditModal(true);
   };
 
   // Cập nhật giảng viên
   const handleUpdateGiangVien = async () => {
-    if (!formData.hoTen || !formData.email || !formData.khoa) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
+    if (!formData.maGV || !formData.hoTen || !formData.email || !formData.khoa || !formData.lienHe) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
-    
-    // Kiểm tra định dạng email
-    if (!validationService.validateEmailFormat(formData.email)) {
-      toast.error("Email không đúng định dạng. Vui lòng kiểm tra lại.");
+    if (validationErrors.maGV) {
+      toast.error("Mã giảng viên không được chứa khoảng trắng.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
-
-    // Kiểm tra định dạng số điện thoại nếu có
-    if (formData.lienHe && !validationService.validatePhoneFormat(formData.lienHe)) {
-      toast.error("Số điện thoại không đúng định dạng. Vui lòng nhập theo định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx");
+    if (validationErrors.email) {
+      toast.error("Email phải có định dạng hợp lệ và kết thúc bằng @gmail.com.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
-    
-    // Kiểm tra trùng lặp email
+    if (formData.lienHe && validationErrors.lienHe) {
+      toast.error("Số điện thoại phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      return;
+    }
+    if (duplicateChecks.maGVExists) {
+      toast.error("Mã giảng viên này đã tồn tại.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      return;
+    }
     if (duplicateChecks.emailExists) {
-      toast.error("Email này đã được sử dụng. Vui lòng sử dụng email khác.");
+      toast.error("Email này đã được sử dụng.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
-    
-    // Kiểm tra trùng lặp số điện thoại
     if (duplicateChecks.phoneExists) {
-      toast.error("Số điện thoại này đã được sử dụng. Vui lòng sử dụng số điện thoại khác.");
+      toast.error("Số điện thoại này đã được sử dụng.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
 
     try {
-      const requestData = { ...formData };
-      
-      // Nếu mật khẩu trống, không gửi lên server
-      if (!requestData.password) {
-        delete requestData.password;
-      }
-      
-      // Không cần gửi userId khi cập nhật
-      delete requestData.userId;
-
+      const requestData = {
+        ...formData,
+        maGV: formData.maGV.toLowerCase(),
+      };
       const response = await axios.put(
         `${API_URL}/giangvien/${currentGiangVien.maGV}`,
         requestData,
         { headers: authHeader() }
       );
       setShowEditModal(false);
-      toast.success("Cập nhật giảng viên thành công!");
+      toast.success("Cập nhật giảng viên thành công!", {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
       fetchGiangVienList();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Đã có lỗi xảy ra khi cập nhật giảng viên.");
+      console.error("Lỗi khi cập nhật giảng viên:", error);
+      toast.error(error.response?.data?.message || "Đã có lỗi xảy ra khi cập nhật giảng viên.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
     }
   };
 
@@ -356,10 +363,17 @@ const GiangVienManager = ({ refreshKey }) => {
         { headers: authHeader() }
       );
       setShowConfirmModal(false);
-      toast.success("Giảng viên đã được xóa thành công!");
+      toast.success("Giảng viên đã được xóa thành công!", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       fetchGiangVienList();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Đã có lỗi xảy ra khi xóa giảng viên.");
+      console.error("Lỗi khi xóa giảng viên:", error);
+      toast.error(error.response?.data?.message || "Đã có lỗi xảy ra khi xóa giảng viên.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       setShowConfirmModal(false);
     }
   };
@@ -377,7 +391,7 @@ const GiangVienManager = ({ refreshKey }) => {
         return gioiTinh;
     }
   };
-  
+
   // Hiển thị modal thống kê
   const handleShowStatsModal = () => {
     fetchGiangVienStats();
@@ -401,106 +415,124 @@ const GiangVienManager = ({ refreshKey }) => {
       lienHe: "",
       gioiTinh: "Nam",
       khoa: "",
-      userId: "",
-      password: "",
     });
-    setShowTaiKhoanForm(false); // Mặc định ẩn form tài khoản khi mở modal mới
+    setValidationErrors({
+      maGV: false,
+      email: false,
+      lienHe: false,
+    });
+    setDuplicateChecks({
+      maGVExists: false,
+      emailExists: false,
+      phoneExists: false,
+      isChecking: false,
+    });
     setShowAddGiangVienModal(true);
   };
 
-  // Xử lý thay đổi trên form tài khoản
-  const handleAccountFormChange = (e) => {
-    const { name, value } = e.target;
-    setAccountFormData({
-      ...accountFormData,
-      [name]: value,
-    });
-    
-    // Kiểm tra trùng lặp tên đăng nhập
-    if (name === 'userId' && value.length >= 3) {
-      checkAccountUsername(value);
-    } else if (name === 'userId') {
-      setAccountUsernameDuplicate(false);
-    }
-  };
-  
-  // Kiểm tra tên đăng nhập khi thêm tài khoản
-  const checkAccountUsername = async (username) => {
-    try {
-      const exists = await validationService.checkUsernameExists(username);
-      setAccountUsernameDuplicate(exists);
-    } catch (error) {
-      console.error("Lỗi kiểm tra trùng tên đăng nhập:", error);
-    }
-  };
-
-  // Hiển thị modal thêm tài khoản
-  const handleShowAddAccountModal = (giangVien) => {
-    setCurrentGiangVien(giangVien);
-    setAccountFormData({
-      userId: "",
-      password: "",
-    });
-    setShowAddAccountModal(true);
-  };
-
-  // Thêm tài khoản cho giảng viên
-  const handleAddAccount = async () => {
-    if (!accountFormData.userId || !accountFormData.password) {
-      toast.error("Vui lòng điền đầy đủ thông tin tài khoản.");
+  // Thêm giảng viên mới
+  const handleAddGiangVien = async () => {
+    if (!formData.maGV || !formData.hoTen || !formData.email || !formData.khoa || !formData.lienHe) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
-    
-    // Kiểm tra trùng lặp tên đăng nhập
-    if (accountUsernameDuplicate) {
-      toast.error("Tên đăng nhập này đã được sử dụng. Vui lòng sử dụng tên đăng nhập khác.");
+    if (validationErrors.maGV) {
+      toast.error("Mã giảng viên không được chứa khoảng trắng.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
-
-    // Lấy token xác thực
-    const headers = authHeader();
-    if (!headers.Authorization) {
-      toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
+    if (validationErrors.email) {
+      toast.error("Email phải có định dạng hợp lệ và kết thúc bằng @gmail.com.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      return;
+    }
+    if (formData.lienHe && validationErrors.lienHe) {
+      toast.error("Số điện thoại phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      return;
+    }
+    if (duplicateChecks.maGVExists) {
+      toast.error("Mã giảng viên này đã tồn tại.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      return;
+    }
+    if (duplicateChecks.emailExists) {
+      toast.error("Email này đã được sử dụng.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      return;
+    }
+    if (duplicateChecks.phoneExists) {
+      toast.error("Số điện thoại này đã được sử dụng.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
 
     try {
-      console.log("Đang thêm tài khoản cho giảng viên:", currentGiangVien.maGV);
-      console.log("Dữ liệu gửi đi:", accountFormData);
-      console.log("Headers xác thực:", headers);
-      
-      const response = await axios.post(
-        `${API_URL}/giangvien/${currentGiangVien.maGV}/taikhoan`,
-        accountFormData,
-        { headers: headers }
-      );
-      
-      console.log("Kết quả từ API:", response.data);
-      setShowAddAccountModal(false);
-      toast.success("Đã thêm tài khoản cho giảng viên thành công!");
-      
-      // Cập nhật lại danh sách giảng viên và trạng thái tài khoản
-      fetchGiangVienList();
-      
-      // Cập nhật trạng thái tài khoản cho giảng viên vừa thêm
-      setGiangVienAccounts(prev => ({
-        ...prev,
-        [currentGiangVien.idNguoiDung]: true
-      }));
-    } catch (error) {
-      console.error("Lỗi khi thêm tài khoản:", error);
-      if (error.response) {
-        console.error("Chi tiết lỗi:", error.response.status, error.response.data);
-        if (error.response.status === 401) {
-          toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
-        } else {
-          toast.error(error.response.data?.message || "Đã có lỗi xảy ra khi thêm tài khoản.");
+      const requestData = {
+        ...formData,
+        maGV: formData.maGV.toLowerCase(),
+      };
+      console.log("Sending data to add teacher:", requestData);
+      const response = await axios.post(`${API_URL}/giangvien`, requestData, {
+        headers: authHeader(),
+      });
+
+      // Create account if phone number is provided
+      if (formData.lienHe) {
+        const userId = formData.maGV.toLowerCase();
+        const password = formData.maGV.toLowerCase() + formData.lienHe.slice(-3);
+        try {
+          await axios.post(
+            `${API_URL}/giangvien/${formData.maGV.toLowerCase()}/taikhoan`,
+            { userId, password },
+            { headers: authHeader() }
+          );
+          setGiangVienAccounts(prev => ({
+            ...prev,
+            [response.data.idNguoiDung]: true,
+          }));
+        } catch (accountError) {
+          console.error("Lỗi khi tạo tài khoản:", accountError);
+          toast.error(accountError.response?.data?.message || "Đã có lỗi xảy ra khi tạo tài khoản.", {
+            position: "top-center",
+            autoClose: 3000,
+          });
         }
-      } else if (error.request) {
-        toast.error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.");
-      } else {
-        toast.error("Đã có lỗi xảy ra khi thêm tài khoản.");
       }
+
+      setShowAddGiangVienModal(false);
+      toast.success(`Giảng viên ${formData.hoTen} đã được tạo thành công!`, {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+      });
+      fetchGiangVienList();
+    } catch (error) {
+      console.error("Lỗi khi thêm giảng viên:", error);
+      toast.error(
+        error.response?.data?.message || "Đã có lỗi xảy ra khi tạo giảng viên.",
+        {
+          position: "top-center",
+          autoClose: 3000,
+        }
+      );
     }
   };
 
@@ -509,65 +541,9 @@ const GiangVienManager = ({ refreshKey }) => {
     return giangVienAccounts[giangVien.idNguoiDung] === true;
   };
 
-  // Thêm giảng viên mới
-  const handleAddGiangVien = async () => {
-    if (!formData.maGV || !formData.hoTen || !formData.email || !formData.khoa) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
-      return;
-    }
-
-    // Kiểm tra thông tin tài khoản nếu người dùng đã mở form tài khoản
-    if (showTaiKhoanForm && (!formData.userId || !formData.password)) {
-      toast.error("Vui lòng điền đầy đủ thông tin tài khoản hoặc ẩn phần tài khoản.");
-      return;
-    }
-    
-    // Kiểm tra định dạng email
-    if (!validationService.validateEmailFormat(formData.email)) {
-      toast.error("Email không đúng định dạng. Vui lòng kiểm tra lại.");
-      return;
-    }
-
-    // Kiểm tra định dạng số điện thoại nếu có
-    if (formData.lienHe && !validationService.validatePhoneFormat(formData.lienHe)) {
-      toast.error("Số điện thoại không đúng định dạng. Vui lòng nhập theo định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx");
-      return;
-    }
-    
-    // Kiểm tra trùng lặp email
-    if (duplicateChecks.emailExists) {
-      toast.error("Email này đã được sử dụng. Vui lòng sử dụng email khác.");
-      return;
-    }
-    
-    // Kiểm tra trùng lặp số điện thoại
-    if (duplicateChecks.phoneExists) {
-      toast.error("Số điện thoại này đã được sử dụng. Vui lòng sử dụng số điện thoại khác.");
-      return;
-    }
-
-    // Kiểm tra trùng lặp tên đăng nhập
-    if (showTaiKhoanForm && duplicateChecks.usernameExists) {
-      toast.error("Tên đăng nhập này đã được sử dụng. Vui lòng sử dụng tên đăng nhập khác.");
-      return;
-    }
-
-    try {
-      const response = await axios.post(`${API_URL}/giangvien`, formData, {
-        headers: authHeader(),
-      });
-      setShowAddGiangVienModal(false);
-      toast.success("Giảng viên đã được tạo thành công!");
-      fetchGiangVienList();
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Đã có lỗi xảy ra khi tạo giảng viên."
-      );
-    }
-  };
-
   return (
-    <Container >
+    <Container>
+      <ToastContainer/>
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Quản lý giảng viên</h5>
@@ -653,25 +629,14 @@ const GiangVienManager = ({ refreshKey }) => {
                           >
                             <FontAwesomeIcon icon={faEdit} />
                           </Button>
-                          {!hasTaiKhoan(giangVien) && (
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              className="me-1"
-                              onClick={() => handleShowAddAccountModal(giangVien)}
-                              title="Thêm tài khoản"
-                            >
-                              <FontAwesomeIcon icon={faUserLock} />
-                            </Button>
-                          )}
-                          <Button
+                          {/* <Button
                             variant="outline-danger"
                             size="sm"
                             onClick={() => handleShowDeleteConfirm(giangVien)}
                             title="Xóa giảng viên"
                           >
                             <FontAwesomeIcon icon={faTrash} />
-                          </Button>
+                          </Button> */}
                         </div>
                       </td>
                     </tr>
@@ -710,32 +675,16 @@ const GiangVienManager = ({ refreshKey }) => {
                     onChange={handleInputChange}
                     required
                   >
-                    <option value="">-- Chọn khoa/chuyên ngành --</option>
+                    <option value="">-- Chọn khoa --</option>
                     {khoaList.map(khoa => (
                       <option key={khoa} value={khoa}>
                         {khoa}
                       </option>
                     ))}
-                    {/* Thêm lựa chọn nhập khoa mới nếu chưa có trong danh sách */}
-                    <option value="__NEW__">+ Thêm khoa mới</option>
                   </Form.Select>
-                  {formData.khoa === "__NEW__" && (
-                    <Form.Control
-                      type="text"
-                      className="mt-2"
-                      name="khoa"
-                      placeholder="Nhập tên khoa mới"
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        khoa: e.target.value
-                      })}
-                      required
-                    />
-                  )}
                 </Form.Group>
               </Col>
             </Row>
-
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
@@ -749,6 +698,7 @@ const GiangVienManager = ({ refreshKey }) => {
                   />
                 </Form.Group>
               </Col>
+ messy code section starts here
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Email <span className="text-danger">*</span></Form.Label>
@@ -762,7 +712,7 @@ const GiangVienManager = ({ refreshKey }) => {
                   />
                   {validationErrors.email && (
                     <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faExclamationTriangle} /> Email không đúng định dạng
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Email phải kết thúc bằng @gmail.com
                     </Form.Control.Feedback>
                   )}
                   {!validationErrors.email && duplicateChecks.emailExists && (
@@ -778,11 +728,10 @@ const GiangVienManager = ({ refreshKey }) => {
                 </Form.Group>
               </Col>
             </Row>
-
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Số điện thoại</Form.Label>
+                  <Form.Label>Số điện thoại<span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     type="text"
                     name="lienHe"
@@ -792,7 +741,7 @@ const GiangVienManager = ({ refreshKey }) => {
                   />
                   {validationErrors.lienHe && (
                     <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faExclamationTriangle} /> Số điện thoại không đúng định dạng (VD: 0912345678)
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Số điện thoại phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx
                     </Form.Control.Feedback>
                   )}
                   {!validationErrors.lienHe && duplicateChecks.phoneExists && (
@@ -823,42 +772,6 @@ const GiangVienManager = ({ refreshKey }) => {
                 </Form.Group>
               </Col>
             </Row>
-
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Button variant="link" onClick={handleToggleTaiKhoanForm} className="p-0">
-                    <FontAwesomeIcon icon={faKey} className="me-1" />
-                    {showTaiKhoanForm ? "Ẩn cập nhật mật khẩu" : "Cập nhật mật khẩu"}
-                  </Button>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {showTaiKhoanForm && (
-              <Card className="mb-3 bg-light">
-                <Card.Body>
-                  <Card.Title className="fs-6">Cập nhật mật khẩu</Card.Title>
-                  <Row>
-                    <Col>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Mật khẩu mới <span className="text-danger">*</span></Form.Label>
-                        <Form.Control
-                          type="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        <Form.Text className="text-muted">
-                          Để trống nếu không muốn thay đổi mật khẩu.
-                        </Form.Text>
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            )}
           </Form>
         </Modal.Body>
         <Modal.Footer>
@@ -879,6 +792,8 @@ const GiangVienManager = ({ refreshKey }) => {
         <Modal.Body>
           <p>Bạn có chắc chắn muốn xóa giảng viên <strong>{currentGiangVien?.hoTen}</strong>?</p>
           <p className="text-danger">Lưu ý: Hành động này không thể hoàn tác và sẽ xóa cả thông tin người dùng và tài khoản.</p>
+ Ohm, I got a bit carried away there. Let's clean this up and get back to the main point.
+
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
@@ -922,7 +837,6 @@ const GiangVienManager = ({ refreshKey }) => {
                   </Card>
                 </Col>
               </Row>
-              
               <h5 className="mb-3">Phân bố giảng viên theo khoa</h5>
               <Table bordered className="mb-4">
                 <thead>
@@ -951,14 +865,12 @@ const GiangVienManager = ({ refreshKey }) => {
                       );
                     })
                   ) : (
-                    // Nếu không có dữ liệu từ API, tính toán trực tiếp từ giangVienList
                     (() => {
                       const khoaCount = {};
                       giangVienList.forEach(gv => {
                         const khoa = gv.khoa || "Chưa phân khoa";
                         khoaCount[khoa] = (khoaCount[khoa] || 0) + 1;
                       });
-                      
                       return Object.entries(khoaCount).map(([khoa, soLuong]) => {
                         const tyLe = (soLuong / giangVienList.length) * 100;
                         return (
@@ -979,7 +891,6 @@ const GiangVienManager = ({ refreshKey }) => {
                   )}
                 </tbody>
               </Table>
-              
               {statsData?.thongKeGioiTinh && (
                 <>
                   <h5 className="mb-3">Phân bố giảng viên theo giới tính</h5>
@@ -1019,7 +930,6 @@ const GiangVienManager = ({ refreshKey }) => {
                   </Table>
                 </>
               )}
-              
               {statsData?.topMuonPhong && statsData.topMuonPhong.length > 0 && (
                 <>
                   <h5 className="mb-3">Top 5 giảng viên mượn phòng nhiều nhất</h5>
@@ -1074,8 +984,24 @@ const GiangVienManager = ({ refreshKey }) => {
                     value={formData.maGV}
                     onChange={handleInputChange}
                     placeholder="Nhập mã giảng viên"
+                    isInvalid={validationErrors.maGV || duplicateChecks.maGVExists}
                     required
                   />
+                  {validationErrors.maGV && (
+                    <Form.Control.Feedback type="invalid">
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Mã giảng viên không được chứa khoảng trắng
+                    </Form.Control.Feedback>
+                  )}
+                  {!validationErrors.maGV && duplicateChecks.maGVExists && (
+                    <Form.Control.Feedback type="invalid">
+                      <FontAwesomeIcon icon={faInfoCircle} /> Mã giảng viên này đã tồn tại
+                    </Form.Control.Feedback>
+                  )}
+                  {duplicateChecks.isChecking && formData.maGV && formData.maGV.length >= 3 && (
+                    <div className="mt-1">
+                      <Spinner animation="border" size="sm" /> Đang kiểm tra...
+                    </div>
+                  )}
                 </Form.Group>
               </Col>
               <Col md={6}>
@@ -1101,13 +1027,13 @@ const GiangVienManager = ({ refreshKey }) => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    placeholder="Nhập email"
+                    placeholder="Nhập email (phải kết thúc bằng @gmail.com)"
                     isInvalid={validationErrors.email || duplicateChecks.emailExists}
                     required
                   />
                   {validationErrors.email && (
                     <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faExclamationTriangle} /> Email không đúng định dạng
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Email phải kết thúc bằng @gmail.com
                     </Form.Control.Feedback>
                   )}
                   {!validationErrors.email && duplicateChecks.emailExists && (
@@ -1124,18 +1050,18 @@ const GiangVienManager = ({ refreshKey }) => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Liên hệ</Form.Label>
+                  <Form.Label>Số điện thoại<span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     type="text"
                     name="lienHe"
                     value={formData.lienHe}
                     onChange={handleInputChange}
-                    placeholder="Nhập số điện thoại hoặc địa chỉ"
+                    placeholder="Nhập số điện thoại (0xxxxxxxxx hoặc +84xxxxxxxxx)"
                     isInvalid={validationErrors.lienHe || duplicateChecks.phoneExists}
                   />
                   {validationErrors.lienHe && (
                     <Form.Control.Feedback type="invalid">
-                      <FontAwesomeIcon icon={faExclamationTriangle} /> Số điện thoại không đúng định dạng (VD: 0912345678)
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Số điện thoại phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx
                     </Form.Control.Feedback>
                   )}
                   {!validationErrors.lienHe && duplicateChecks.phoneExists && (
@@ -1170,73 +1096,29 @@ const GiangVienManager = ({ refreshKey }) => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Khoa <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Select
                     name="khoa"
                     value={formData.khoa}
                     onChange={handleInputChange}
-                    placeholder="Nhập khoa"
                     required
-                  />
+                  >
+                    <option value="">-- Chọn khoa --</option>
+                    {khoaList.map(khoa => (
+                      <option key={khoa} value={khoa}>
+                        {khoa}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
               </Col>
             </Row>
-            <hr />
-            <Button
-              variant="link"
-              onClick={handleToggleTaiKhoanForm}
-              className="p-0 mb-3 d-flex align-items-center"
-            >
-              <FontAwesomeIcon icon={faKey} className="me-2" />
-              {showTaiKhoanForm ? "Ẩn thông tin tài khoản" : "Thêm thông tin tài khoản"}
-            </Button>
-
-            {showTaiKhoanForm && (
-              <>
-                <Alert variant="info" className="mb-3">
-                  Tạo tài khoản người dùng mới cho giảng viên này. Mã người dùng (User ID) và Mật khẩu là bắt buộc.
-                </Alert>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Tên đăng nhập <span className="text-danger">*</span></Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="userId"
-                        value={formData.userId}
-                        onChange={handleInputChange}
-                        placeholder="Nhập tên đăng nhập"
-                        isInvalid={duplicateChecks.usernameExists}
-                        required={showTaiKhoanForm} // Required only when form is shown
-                      />
-                      {duplicateChecks.usernameExists && (
-                        <Form.Control.Feedback type="invalid">
-                          <FontAwesomeIcon icon={faInfoCircle} /> Tên đăng nhập này đã được sử dụng
-                        </Form.Control.Feedback>
-                      )}
-                      {duplicateChecks.isChecking && formData.userId && formData.userId.length >= 3 && (
-                        <div className="mt-1">
-                          <Spinner animation="border" size="sm" /> Đang kiểm tra...
-                        </div>
-                      )}
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Mật khẩu <span className="text-danger">*</span></Form.Label>
-                      <Form.Control
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        placeholder="Nhập mật khẩu"
-                        required={showTaiKhoanForm} // Required only when form is shown
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-              </>
-            )}
+            {/* {formData.lienHe && !validationErrors.lienHe && !duplicateChecks.phoneExists && (
+              <Alert variant="info">
+                Tài khoản sẽ được tạo với:<br />
+                Tên đăng nhập: <strong>{formData.maGV.toLowerCase()}</strong><br />
+                Mật khẩu: <strong>{formData.maGV.toLowerCase() + (formData.lienHe?.slice(-3) || 'xxx')}</strong>
+              </Alert>
+            )} */}
           </Form>
         </Modal.Body>
         <Modal.Footer>
@@ -1248,64 +1130,8 @@ const GiangVienManager = ({ refreshKey }) => {
           </Button>
         </Modal.Footer>
       </Modal>
-
-      {/* Modal Thêm tài khoản cho giảng viên */}
-      <Modal
-        show={showAddAccountModal}
-        onHide={() => setShowAddAccountModal(false)}
-        backdrop="static"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Thêm tài khoản cho giảng viên</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Alert variant="info">
-            Thêm tài khoản cho giảng viên <strong>{currentGiangVien?.hoTen}</strong> (Mã GV: {currentGiangVien?.maGV})
-          </Alert>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Tên đăng nhập <span className="text-danger">*</span>
-              </Form.Label>
-              <Form.Control
-                type="text"
-                name="userId"
-                value={accountFormData.userId}
-                onChange={handleAccountFormChange}
-                isInvalid={accountUsernameDuplicate}
-                required
-              />
-              {accountUsernameDuplicate && (
-                <Form.Control.Feedback type="invalid">
-                  <FontAwesomeIcon icon={faInfoCircle} /> Tên đăng nhập này đã được sử dụng
-                </Form.Control.Feedback>
-              )}
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Mật khẩu <span className="text-danger">*</span>
-              </Form.Label>
-              <Form.Control
-                type="password"
-                name="password"
-                value={accountFormData.password}
-                onChange={handleAccountFormChange}
-                required
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAddAccountModal(false)}>
-            Hủy
-          </Button>
-          <Button variant="primary" onClick={handleAddAccount}>
-            Thêm tài khoản
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </Container>
   );
 };
 
-export default GiangVienManager; 
+export default GiangVienManager;

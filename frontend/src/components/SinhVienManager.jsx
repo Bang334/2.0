@@ -9,8 +9,6 @@ import {
   Form,
   Modal,
   Badge,
-  Tabs,
-  Tab,
   Alert,
   Spinner,
 } from "react-bootstrap";
@@ -21,9 +19,6 @@ import {
   faEdit,
   faTrash,
   faSearch,
-  faKey,
-  faUsers,
-  faSchool,
   faUserPlus,
   faUserLock,
   faExclamationTriangle,
@@ -41,16 +36,11 @@ const SinhVienManager = ({ refreshKey }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showAddSinhVienModal, setShowAddSinhVienModal] = useState(false);
-  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
   const [currentSinhVien, setCurrentSinhVien] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showTaiKhoanForm, setShowTaiKhoanForm] = useState(false);
   const [sinhVienAccounts, setSinhVienAccounts] = useState({});
-  const [accountFormData, setAccountFormData] = useState({
-    userId: "",
-    password: "",
-  });
+
   const [formData, setFormData] = useState({
     maSV: "",
     hoTen: "",
@@ -58,12 +48,12 @@ const SinhVienManager = ({ refreshKey }) => {
     lienHe: "",
     gioiTinh: "Nam",
     maLop: "",
-    userId: "",
-    password: "",
   });
   
   // State để theo dõi lỗi validation
   const [validationErrors, setValidationErrors] = useState({
+    maSV: false,
+    hoTen: false,
     email: false,
     lienHe: false
   });
@@ -72,12 +62,8 @@ const SinhVienManager = ({ refreshKey }) => {
   const [duplicateChecks, setDuplicateChecks] = useState({
     emailExists: false,
     phoneExists: false,
-    usernameExists: false,
     isChecking: false
   });
-
-  // State để theo dõi trùng lặp tên đăng nhập trong form thêm tài khoản
-  const [accountUsernameDuplicate, setAccountUsernameDuplicate] = useState(false);
 
   // Lấy danh sách sinh viên khi component được render
   useEffect(() => {
@@ -131,7 +117,6 @@ const SinhVienManager = ({ refreshKey }) => {
       
       // Tạo map để kiểm tra nhanh hơn
       sinhVienData.forEach(sv => {
-        // Tìm xem idNguoiDung của sinh viên có trong danh sách tài khoản không
         const taiKhoan = taiKhoanList.find(tk => tk.idNguoiDung === sv.idNguoiDung);
         accountsMap[sv.idNguoiDung] = taiKhoan ? true : false;
       });
@@ -158,33 +143,47 @@ const SinhVienManager = ({ refreshKey }) => {
     }
   };
 
+  // Hàm kiểm tra định dạng mã sinh viên
+  const validateMaSVFormat = (maSV) => {
+    const maSVRegex = /^[NEne]\d{2}[A-Za-z]{4}\d{3}$/;
+    return maSVRegex.test(maSV);
+  };
+
+  // Hàm kiểm tra định dạng họ tên
+  const validateHoTenFormat = (hoTen) => {
+    const hoTenRegex = /^[A-Za-zÀ-ỹ\s]+$/;
+    return hoTenRegex.test(hoTen);
+  };
+
   // Xử lý thay đổi trên form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
+    const newFormData = {
       ...formData,
       [name]: value,
-    });
+    };
+
+    // Tự động cập nhật email dựa trên mã sinh viên
+    if (name === "maSV") {
+      newFormData.email = value ? `${value.toLowerCase()}@student.ptithcm.edu.vn` : "";
+    }
+
+    setFormData(newFormData);
     
     // Kiểm tra validation khi người dùng nhập
-    if (name === 'email') {
-      const isValidFormat = value === "" || validationService.validateEmailFormat(value);
+    if (name === "maSV") {
+      const isValidFormat = value === "" || validateMaSVFormat(value);
       setValidationErrors({
         ...validationErrors,
-        email: !isValidFormat
+        maSV: !isValidFormat
       });
-      
-      // Nếu định dạng hợp lệ và đã nhập đủ 3 ký tự, kiểm tra trùng lặp
-      if (isValidFormat && value.length >= 3) {
-        checkDuplicateEmail(value);
-      } else {
-        // Reset trạng thái kiểm tra trùng lặp
-        setDuplicateChecks(prev => ({
-          ...prev,
-          emailExists: false
-        }));
-      }
-    } else if (name === 'lienHe') {
+    } else if (name === "hoTen") {
+      const isValidFormat = value === "" || validateHoTenFormat(value);
+      setValidationErrors({
+        ...validationErrors,
+        hoTen: !isValidFormat
+      });
+    } else if (name === "lienHe") {
       const isValidFormat = value === "" || validationService.validatePhoneFormat(value);
       setValidationErrors({
         ...validationErrors,
@@ -201,17 +200,6 @@ const SinhVienManager = ({ refreshKey }) => {
           phoneExists: false
         }));
       }
-    } else if (name === 'userId') {
-      // Nếu đã nhập đủ 3 ký tự, kiểm tra trùng lặp
-      if (value.length >= 3) {
-        checkDuplicateUsername(value);
-      } else {
-        // Reset trạng thái kiểm tra trùng lặp
-        setDuplicateChecks(prev => ({
-          ...prev,
-          usernameExists: false
-        }));
-      }
     }
   };
   
@@ -221,7 +209,6 @@ const SinhVienManager = ({ refreshKey }) => {
     
     setDuplicateChecks(prev => ({ ...prev, isChecking: true }));
     try {
-      // Nếu đang chỉnh sửa, loại trừ ID hiện tại
       const excludeId = currentSinhVien ? currentSinhVien.idNguoiDung : null;
       const exists = await validationService.checkEmailExists(email, excludeId);
       
@@ -242,7 +229,6 @@ const SinhVienManager = ({ refreshKey }) => {
     
     setDuplicateChecks(prev => ({ ...prev, isChecking: true }));
     try {
-      // Nếu đang chỉnh sửa, loại trừ ID hiện tại
       const excludeId = currentSinhVien ? currentSinhVien.idNguoiDung : null;
       const exists = await validationService.checkPhoneExists(phone, excludeId);
       
@@ -257,38 +243,6 @@ const SinhVienManager = ({ refreshKey }) => {
     }
   };
 
-  // Kiểm tra tên đăng nhập đã tồn tại chưa
-  const checkDuplicateUsername = async (username) => {
-    if (!username) return;
-    
-    setDuplicateChecks(prev => ({ ...prev, isChecking: true }));
-    try {
-      const exists = await validationService.checkUsernameExists(username);
-      
-      setDuplicateChecks(prev => ({
-        ...prev,
-        usernameExists: exists,
-        isChecking: false
-      }));
-    } catch (error) {
-      console.error("Lỗi kiểm tra trùng tên đăng nhập:", error);
-      setDuplicateChecks(prev => ({ ...prev, isChecking: false }));
-    }
-  };
-
-  // Toggle form tài khoản
-  const handleToggleTaiKhoanForm = () => {
-    setShowTaiKhoanForm(!showTaiKhoanForm);
-    if (!showTaiKhoanForm) {
-      // Reset trường tài khoản khi hiển thị form
-      setFormData({
-        ...formData,
-        userId: "",
-        password: "",
-      });
-    }
-  };
-
   // Hiển thị modal thêm sinh viên mới
   const handleShowAddSinhVienModal = () => {
     setFormData({
@@ -298,29 +252,38 @@ const SinhVienManager = ({ refreshKey }) => {
       lienHe: "",
       gioiTinh: "Nam",
       maLop: "",
-      userId: "",
-      password: "",
     });
-    setShowTaiKhoanForm(false);
+    setValidationErrors({
+      maSV: false,
+      hoTen: false,
+      email: false,
+      lienHe: false
+    });
     setShowAddSinhVienModal(true);
   };
 
   // Thêm sinh viên mới
   const handleAddSinhVien = async () => {
-    if (!formData.maSV || !formData.hoTen || !formData.email || !formData.gioiTinh) {
+    if (!formData.maSV || !formData.hoTen || !formData.gioiTinh|| !formData.lienHe || !formData.maLop) {
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
       return;
     }
 
-    // Kiểm tra thông tin tài khoản nếu người dùng đã mở form tài khoản
-    if (showTaiKhoanForm && (!formData.userId || !formData.password)) {
-      toast.error("Vui lòng điền đầy đủ thông tin tài khoản hoặc ẩn phần tài khoản.");
+    // Kiểm tra định dạng mã sinh viên
+    if (!validateMaSVFormat(formData.maSV)) {
+      toast.error("Mã sinh viên phải có định dạng (VD: N22DCCN181)");
+      return;
+    }
+
+    // Kiểm tra định dạng họ tên
+    if (!validateHoTenFormat(formData.hoTen)) {
+      toast.error("Họ tên chỉ được chứa chữ cái và dấu cách, không chứa số hoặc ký tự đặc biệt.");
       return;
     }
 
     // Kiểm tra định dạng email
     if (!validationService.validateEmailFormat(formData.email)) {
-      toast.error("Email không đúng định dạng. Vui lòng kiểm tra lại.");
+      toast.error("Email không đúng định dạng.");
       return;
     }
 
@@ -332,24 +295,46 @@ const SinhVienManager = ({ refreshKey }) => {
     
     // Kiểm tra trùng lặp email
     if (duplicateChecks.emailExists) {
-      toast.error("Email này đã được sử dụng. Vui lòng sử dụng email khác.");
+      toast.error("Email này đã được sử dụng. Vui lòng sử dụng mã sinh viên khác.");
       return;
     }
     
     // Kiểm tra trùng lặp số điện thoại
-    if (duplicateChecks.phoneExists) {
+    if (formData.lienHe && duplicateChecks.phoneExists) {
       toast.error("Số điện thoại này đã được sử dụng. Vui lòng sử dụng số điện thoại khác.");
       return;
     }
-    
+
+    // Tạo thông tin tài khoản
+    const username = formData.maSV.toLowerCase();
+    let password = "";
+    if (formData.lienHe) {
+      const lastThreeDigits = formData.lienHe.slice(-3);
+      password = `${username}${lastThreeDigits}`;
+    } else {
+      password = username; // Fallback nếu không có số điện thoại
+    }
+
     // Kiểm tra trùng lặp tên đăng nhập
-    if (showTaiKhoanForm && duplicateChecks.usernameExists) {
-      toast.error("Tên đăng nhập này đã được sử dụng. Vui lòng sử dụng tên đăng nhập khác.");
+    try {
+      const usernameExists = await validationService.checkUsernameExists(username);
+      if (usernameExists) {
+        toast.error("Mã sinh viên này đã được sử dụng làm tên đăng nhập.");
+        return;
+      }
+    } catch (error) {
+      console.error("Lỗi kiểm tra trùng tên đăng nhập:", error);
+      toast.error("Lỗi khi kiểm tra tên đăng nhập.");
       return;
     }
 
     try {
-      const response = await axios.post(`${API_URL}/sinhvien`, formData, {
+      const response = await axios.post(`${API_URL}/sinhvien`, {
+        ...formData,
+        hoTen: formData.hoTen.toLowerCase(),
+        userId: username,
+        password: password
+      }, {
         headers: authHeader(),
       });
       setShowAddSinhVienModal(false);
@@ -372,9 +357,7 @@ const SinhVienManager = ({ refreshKey }) => {
       lienHe: sinhVien.lienHe || "",
       gioiTinh: sinhVien.gioiTinh,
       maLop: sinhVien.maLop || "",
-      password: "", // Password luôn trống khi sửa
     });
-    setShowTaiKhoanForm(false);
     setShowEditModal(true);
   };
 
@@ -382,6 +365,12 @@ const SinhVienManager = ({ refreshKey }) => {
   const handleUpdateSinhVien = async () => {
     if (!formData.hoTen || !formData.email) {
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
+      return;
+    }
+
+    // Kiểm tra định dạng họ tên
+    if (!validateHoTenFormat(formData.hoTen)) {
+      toast.error("Họ tên chỉ được chứa chữ cái và dấu cách, không chứa số hoặc ký tự đặc biệt.");
       return;
     }
 
@@ -404,22 +393,16 @@ const SinhVienManager = ({ refreshKey }) => {
     }
     
     // Kiểm tra trùng lặp số điện thoại
-    if (duplicateChecks.phoneExists) {
+    if (formData.lienHe && duplicateChecks.phoneExists) {
       toast.error("Số điện thoại này đã được sử dụng. Vui lòng sử dụng số điện thoại khác.");
       return;
     }
 
     try {
-      const requestData = { ...formData };
-
-      // Nếu mật khẩu trống, không gửi lên server
-      if (!requestData.password) {
-        delete requestData.password;
-      }
-
-      // Không cần gửi userId khi cập nhật
-      delete requestData.userId;
-
+      const requestData = { 
+        ...formData,
+        hoTen: formData.hoTen.toLowerCase()
+      };
       const response = await axios.put(
         `${API_URL}/sinhvien/${currentSinhVien.maSV}`,
         requestData,
@@ -459,96 +442,54 @@ const SinhVienManager = ({ refreshKey }) => {
     }
   };
 
-  // Xử lý thay đổi trên form tài khoản
-  const handleAccountFormChange = (e) => {
-    const { name, value } = e.target;
-    setAccountFormData({
-      ...accountFormData,
-      [name]: value,
-    });
-    
-    // Kiểm tra trùng lặp tên đăng nhập
-    if (name === 'userId' && value.length >= 3) {
-      checkAccountUsername(value);
-    } else if (name === 'userId') {
-      setAccountUsernameDuplicate(false);
-    }
-  };
-  
-  // Kiểm tra tên đăng nhập khi thêm tài khoản
-  const checkAccountUsername = async (username) => {
-    try {
-      const exists = await validationService.checkUsernameExists(username);
-      setAccountUsernameDuplicate(exists);
-    } catch (error) {
-      console.error("Lỗi kiểm tra trùng tên đăng nhập:", error);
-    }
-  };
-
   // Hiển thị modal thêm tài khoản
-  const handleShowAddAccountModal = (sinhVien) => {
+  const handleShowAddAccountModal = async (sinhVien) => {
     setCurrentSinhVien(sinhVien);
-    setAccountFormData({
-      userId: "",
-      password: "",
-    });
-    setShowAddAccountModal(true);
-  };
-
-  // Thêm tài khoản cho sinh viên
-  const handleAddAccount = async () => {
-    if (!accountFormData.userId || !accountFormData.password) {
-      toast.error("Vui lòng điền đầy đủ thông tin tài khoản.");
-      return;
-    }
     
-    // Kiểm tra trùng lặp tên đăng nhập
-    if (accountUsernameDuplicate) {
-      toast.error("Tên đăng nhập này đã được sử dụng. Vui lòng sử dụng tên đăng nhập khác.");
+    if (!sinhVien.lienHe) {
+      toast.error("Sinh viên cần có số điện thoại để tạo tài khoản.");
       return;
     }
 
-    // Lấy token xác thực
-    const headers = authHeader();
-    if (!headers.Authorization) {
-      toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
-      return;
-    }
+    const username = sinhVien.maSV.toLowerCase();
+    const lastThreeDigits = sinhVien.lienHe.slice(-3);
+    const password = `${username}${lastThreeDigits}`;
 
     try {
-      console.log("Đang thêm tài khoản cho sinh viên:", currentSinhVien.maSV);
-      console.log("Dữ liệu gửi đi:", accountFormData);
-      console.log("Headers xác thực:", headers);
-      
+      const usernameExists = await validationService.checkUsernameExists(username);
+      if (usernameExists) {
+        toast.error("Tên đăng nhập đã tồn tại.");
+        return;
+      }
+
+      const headers = authHeader();
+      if (!headers.Authorization) {
+        toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
+        return;
+      }
+
       const response = await axios.post(
-        `${API_URL}/sinhvien/${currentSinhVien.maSV}/taikhoan`,
-        accountFormData,
-        { headers: headers }
+        `${API_URL}/sinhvien/${sinhVien.maSV}/taikhoan`,
+        { userId: username, password: password },
+        { headers }
       );
       
-      console.log("Kết quả từ API:", response.data);
-      setShowAddAccountModal(false);
       toast.success("Đã thêm tài khoản cho sinh viên thành công!");
-      
-      // Cập nhật lại danh sách sinh viên và trạng thái tài khoản
       fetchSinhVienList();
-      
-      // Cập nhật trạng thái tài khoản cho sinh viên vừa thêm
       setSinhVienAccounts(prev => ({
         ...prev,
-        [currentSinhVien.idNguoiDung]: true
+        [sinhVien.idNguoiDung]: true
       }));
     } catch (error) {
       console.error("Lỗi khi thêm tài khoản:", error);
       if (error.response) {
-        console.error("Chi tiết lỗi:", error.response.status, error.response.data);
         if (error.response.status === 401) {
           toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
         } else {
           toast.error(error.response.data?.message || "Đã có lỗi xảy ra khi thêm tài khoản.");
         }
       } else if (error.request) {
-        toast.error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.");
+        toast.error("Không thể kết nối đến máy chủ.");
       } else {
         toast.error("Đã có lỗi xảy ra khi thêm tài khoản.");
       }
@@ -570,7 +511,7 @@ const SinhVienManager = ({ refreshKey }) => {
   };
 
   // Kiểm tra sinh viên có tài khoản chưa
-  const hasTaiKhoan = (sinhVien) => {
+  const hasSinhVienAccount = (sinhVien) => {
     return sinhVienAccounts[sinhVien.idNguoiDung] === true;
   };
 
@@ -585,11 +526,11 @@ const SinhVienManager = ({ refreshKey }) => {
 
   return (
     <Container>
+      <ToastContainer />
       <Card className="mb-4">
         <Card.Header>
           <div className="d-flex justify-content-between align-items-center mb-2">
             <h5 className="mb-0">Quản lý sinh viên</h5>
-
             <Button variant="outline-light" onClick={handleShowAddSinhVienModal}>
               <FontAwesomeIcon icon={faUserPlus} /> Thêm sinh viên
             </Button>
@@ -660,7 +601,7 @@ const SinhVienManager = ({ refreshKey }) => {
                         )}
                       </td>
                       <td>
-                        {hasTaiKhoan(sinhVien) ? (
+                        {hasSinhVienAccount(sinhVien) ? (
                           <Badge bg="success">Đã có tài khoản</Badge>
                         ) : (
                           <Badge bg="secondary">Chưa có tài khoản</Badge>
@@ -677,7 +618,7 @@ const SinhVienManager = ({ refreshKey }) => {
                           >
                             <FontAwesomeIcon icon={faEdit} />
                           </Button>
-                          {!hasTaiKhoan(sinhVien) && (
+                          {!hasSinhVienAccount(sinhVien) && (
                             <Button
                               variant="outline-success"
                               size="sm"
@@ -688,14 +629,14 @@ const SinhVienManager = ({ refreshKey }) => {
                               <FontAwesomeIcon icon={faUserLock} />
                             </Button>
                           )}
-                          <Button
+                          {/* <Button
                             variant="outline-danger"
                             size="sm"
                             onClick={() => handleShowDeleteConfirm(sinhVien)}
                             title="Xóa sinh viên"
                           >
                             <FontAwesomeIcon icon={faTrash} />
-                          </Button>
+                          </Button> */}
                         </div>
                       </td>
                     </tr>
@@ -730,13 +671,20 @@ const SinhVienManager = ({ refreshKey }) => {
                     name="maSV"
                     value={formData.maSV}
                     onChange={handleInputChange}
+                    isInvalid={validationErrors.maSV}
+                    placeholder="VD: N22DCCN181"
                     required
                   />
+                  {validationErrors.maSV && (
+                    <Form.Control.Feedback type="invalid">
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Mã sinh viên phải có định dạng(VD: N22DCCN181)
+                    </Form.Control.Feedback>
+                  )}
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Lớp</Form.Label>
+                  <Form.Label>Lớp<span className="text-danger">*</span></Form.Label>
                   <Form.Select
                     name="maLop"
                     value={formData.maLop}
@@ -764,8 +712,14 @@ const SinhVienManager = ({ refreshKey }) => {
                     name="hoTen"
                     value={formData.hoTen}
                     onChange={handleInputChange}
+                    isInvalid={validationErrors.hoTen}
                     required
                   />
+                  {validationErrors.hoTen && (
+                    <Form.Control.Feedback type="invalid">
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Họ tên chỉ được chứa chữ cái và dấu cách
+                    </Form.Control.Feedback>
+                  )}
                 </Form.Group>
               </Col>
               <Col md={6}>
@@ -777,7 +731,7 @@ const SinhVienManager = ({ refreshKey }) => {
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleInputChange}
+                    readOnly
                     isInvalid={validationErrors.email || duplicateChecks.emailExists}
                     required
                   />
@@ -803,7 +757,7 @@ const SinhVienManager = ({ refreshKey }) => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Số điện thoại</Form.Label>
+                  <Form.Label>Số điện thoại<span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     type="text"
                     name="lienHe"
@@ -846,72 +800,6 @@ const SinhVienManager = ({ refreshKey }) => {
                 </Form.Group>
               </Col>
             </Row>
-
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Button
-                    variant="link"
-                    onClick={handleToggleTaiKhoanForm}
-                    className="p-0"
-                  >
-                    <FontAwesomeIcon icon={faKey} className="me-1" />
-                    {showTaiKhoanForm
-                      ? "Ẩn thông tin tài khoản"
-                      : "Thêm thông tin tài khoản"}
-                  </Button>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {showTaiKhoanForm && (
-              <Card className="mb-3 bg-light">
-                <Card.Body>
-                  <Card.Title className="fs-6">Thông tin tài khoản</Card.Title>
-                  <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>
-                          Tên đăng nhập <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="userId"
-                          value={formData.userId}
-                          onChange={handleInputChange}
-                          isInvalid={duplicateChecks.usernameExists}
-                          required
-                        />
-                        {duplicateChecks.usernameExists && (
-                          <Form.Control.Feedback type="invalid">
-                            <FontAwesomeIcon icon={faInfoCircle} /> Tên đăng nhập này đã được sử dụng
-                          </Form.Control.Feedback>
-                        )}
-                        {duplicateChecks.isChecking && formData.userId && formData.userId.length >= 3 && (
-                          <div className="mt-1">
-                            <Spinner animation="border" size="sm" /> Đang kiểm tra...
-                          </div>
-                        )}
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>
-                          Mật khẩu <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          type="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            )}
           </Form>
         </Modal.Body>
         <Modal.Footer>
@@ -973,8 +861,14 @@ const SinhVienManager = ({ refreshKey }) => {
                     name="hoTen"
                     value={formData.hoTen}
                     onChange={handleInputChange}
+                    isInvalid={validationErrors.hoTen}
                     required
                   />
+                  {validationErrors.hoTen && (
+                    <Form.Control.Feedback type="invalid">
+                      <FontAwesomeIcon icon={faExclamationTriangle} /> Họ tên chỉ được chứa chữ cái và dấu cách
+                    </Form.Control.Feedback>
+                  )}
                 </Form.Group>
               </Col>
               <Col md={6}>
@@ -986,7 +880,7 @@ const SinhVienManager = ({ refreshKey }) => {
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleInputChange}
+                    readOnly
                     isInvalid={validationErrors.email || duplicateChecks.emailExists}
                     required
                   />
@@ -999,11 +893,6 @@ const SinhVienManager = ({ refreshKey }) => {
                     <Form.Control.Feedback type="invalid">
                       <FontAwesomeIcon icon={faInfoCircle} /> Email này đã được sử dụng
                     </Form.Control.Feedback>
-                  )}
-                  {duplicateChecks.isChecking && formData.email && formData.email.length >= 3 && (
-                    <div className="mt-1">
-                      <Spinner animation="border" size="sm" /> Đang kiểm tra...
-                    </div>
                   )}
                 </Form.Group>
               </Col>
@@ -1055,50 +944,6 @@ const SinhVienManager = ({ refreshKey }) => {
                 </Form.Group>
               </Col>
             </Row>
-
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Button
-                    variant="link"
-                    onClick={handleToggleTaiKhoanForm}
-                    className="p-0"
-                  >
-                    <FontAwesomeIcon icon={faKey} className="me-1" />
-                    {showTaiKhoanForm
-                      ? "Ẩn cập nhật mật khẩu"
-                      : "Cập nhật mật khẩu"}
-                  </Button>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {showTaiKhoanForm && (
-              <Card className="mb-3 bg-light">
-                <Card.Body>
-                  <Card.Title className="fs-6">Cập nhật mật khẩu</Card.Title>
-                  <Row>
-                    <Col md={12}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>
-                          Mật khẩu mới <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          type="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        <Form.Text className="text-muted">
-                          Để trống nếu không muốn thay đổi mật khẩu.
-                        </Form.Text>
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            )}
           </Form>
         </Modal.Body>
         <Modal.Footer>
@@ -1135,62 +980,6 @@ const SinhVienManager = ({ refreshKey }) => {
           </Button>
           <Button variant="danger" onClick={handleDeleteSinhVien}>
             Xóa sinh viên
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal Thêm tài khoản cho sinh viên */}
-      <Modal
-        show={showAddAccountModal}
-        onHide={() => setShowAddAccountModal(false)}
-        backdrop="static"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Thêm tài khoản cho sinh viên</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Alert variant="info">
-            Thêm tài khoản cho sinh viên <strong>{currentSinhVien?.hoTen}</strong> (Mã SV: {currentSinhVien?.maSV})
-          </Alert>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Tên đăng nhập <span className="text-danger">*</span>
-              </Form.Label>
-              <Form.Control
-                type="text"
-                name="userId"
-                value={accountFormData.userId}
-                onChange={handleAccountFormChange}
-                isInvalid={accountUsernameDuplicate}
-                required
-              />
-              {accountUsernameDuplicate && (
-                <Form.Control.Feedback type="invalid">
-                  <FontAwesomeIcon icon={faInfoCircle} /> Tên đăng nhập này đã được sử dụng
-                </Form.Control.Feedback>
-              )}
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Mật khẩu <span className="text-danger">*</span>
-              </Form.Label>
-              <Form.Control
-                type="password"
-                name="password"
-                value={accountFormData.password}
-                onChange={handleAccountFormChange}
-                required
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAddAccountModal(false)}>
-            Hủy
-          </Button>
-          <Button variant="primary" onClick={handleAddAccount}>
-            Thêm tài khoản
           </Button>
         </Modal.Footer>
       </Modal>
