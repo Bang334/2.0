@@ -162,6 +162,16 @@ const SinhVienManager = ({ refreshKey }) => {
       ...prev,
       [field]: value,
     }));
+
+    // Tự động tạo email từ mã sinh viên khi thêm mới
+    if (field === "maSV") {
+      const email = `${value}@student.ptithcm.edu.vn`;
+      setFormData((prev) => ({
+        ...prev,
+        email: email,
+      }));
+    }
+
     // Reset validation error for the field being changed
     if (validationErrors[field]) {
       setValidationErrors((prev) => ({
