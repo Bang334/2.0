@@ -18,7 +18,8 @@ import {
   faUnlock,
   faSearch,
 } from "@fortawesome/free-solid-svg-icons";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const API_URL = "http://localhost:8080/api/quanly";
 
@@ -43,16 +44,12 @@ const TaiKhoanManager = (props) => {
       setLoading(false);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách tài khoản:", error);
-      toast.error("Không thể lấy danh sách tài khoản. Vui lòng thử lại sau.");
+      toast.error("Không thể lấy danh sách tài khoản. Vui lòng thử lại sau.", {
+        containerId: "taiKhoanManagerToast"
+      });
       setLoading(false);
     }
   };
-
-
-
-
-
-
 
   // Khóa/Mở khóa tài khoản
   const handleToggleTaiKhoanStatus = async (taiKhoan) => {
@@ -63,16 +60,24 @@ const TaiKhoanManager = (props) => {
         { trangThai: newStatus },
         { headers: authHeader() }
       );
+      
       toast.success(
         newStatus === "HoatDong"
           ? "Tài khoản đã được kích hoạt!"
-          : "Tài khoản đã bị khóa!"
+          : "Tài khoản đã bị khóa!",
+        {
+          containerId: "taiKhoanManagerToast"
+        }
       );
-      fetchTaiKhoanList();
+      
+      await fetchTaiKhoanList();
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Đã có lỗi xảy ra khi thay đổi trạng thái tài khoản."
+          "Đã có lỗi xảy ra khi thay đổi trạng thái tài khoản.",
+        {
+          containerId: "taiKhoanManagerToast"
+        }
       );
     }
   };
@@ -110,6 +115,20 @@ const TaiKhoanManager = (props) => {
 
   return (
     <Container>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        containerId="taiKhoanManagerToast"
+      />
+      
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Quản lý tài khoản</h5>
@@ -201,10 +220,6 @@ const TaiKhoanManager = (props) => {
           </div>
         </Card.Body>
       </Card>
-
-
-
-
     </Container>
   );
 };

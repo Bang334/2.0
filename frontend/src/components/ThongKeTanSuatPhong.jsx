@@ -224,7 +224,7 @@ const ThongKeTanSuatPhong = () => {
 
     const labels = Object.keys(thongKeData.thongKeTheoPhong);
     const data = Object.values(thongKeData.thongKeTheoPhong);
-    
+
     // Màu sắc cho các phần (bảng màu mới, dịu hơn)
     const backgroundColors = [
       'rgba(128, 179, 160, 0.8)', // Soft Green
@@ -262,14 +262,14 @@ const ThongKeTanSuatPhong = () => {
     const headers = ['Thời gian', 'Tổng số lần mượn', ...thongKeData.danhSachPhong];
     timeData.push(headers);
 
-    thongKeData.thongKeTheoThoiGian.forEach(item => {
+      thongKeData.thongKeTheoThoiGian.forEach(item => {
       const row = [
         item.thoiGian,
         item.tongSoLanMuon,
         ...thongKeData.danhSachPhong.map(phong => item[phong] || 0)
       ];
-      timeData.push(row);
-    });
+        timeData.push(row);
+      });
 
     // Chuẩn bị dữ liệu cho sheet thống kê theo phòng
     const roomData = [];
@@ -279,7 +279,7 @@ const ThongKeTanSuatPhong = () => {
     Object.entries(thongKeData.thongKeTheoPhong).forEach(([phong, soLan]) => {
       const tiLe = ((soLan / totalRooms) * 100).toFixed(2);
       roomData.push([phong, soLan, `${tiLe}%`]);
-    });
+      });
 
     return {
       timeData,
@@ -291,10 +291,10 @@ const ThongKeTanSuatPhong = () => {
   const exportToExcel = () => {
     const data = prepareExcelData();
     if (!data) return;
-
+    
     // Tạo workbook mới
     const wb = XLSX.utils.book_new();
-
+    
     // Định dạng cho header
     const headerStyle = {
       font: { bold: true, color: { rgb: "FFFFFF" } },
@@ -348,7 +348,7 @@ const ThongKeTanSuatPhong = () => {
     // Thêm các worksheet vào workbook
     XLSX.utils.book_append_sheet(wb, ws1, "Thống kê theo thời gian");
     XLSX.utils.book_append_sheet(wb, ws2, "Thống kê theo phòng");
-
+    
     // Xuất file Excel
     const fileName = `ThongKeTanSuatPhong_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.xlsx`;
     XLSX.writeFile(wb, fileName);

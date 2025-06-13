@@ -23,6 +23,8 @@ import {
   faUserLock,
   faExclamationTriangle,
   faInfoCircle,
+  faTimes,
+  faSave,
 } from "@fortawesome/free-solid-svg-icons";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -99,7 +101,9 @@ const SinhVienManager = ({ refreshKey }) => {
       setLoading(false);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách sinh viên:", error);
-      toast.error("Không thể lấy danh sách sinh viên. Vui lòng thử lại sau.");
+      toast.error("Không thể lấy danh sách sinh viên. Vui lòng thử lại sau.", {
+        containerId: "sinhVienManagerToast"
+      });
       setLoading(false);
     }
   };
@@ -138,7 +142,9 @@ const SinhVienManager = ({ refreshKey }) => {
     } catch (error) {
       console.error("Lỗi khi lấy danh sách lớp học:", error);
       if (error.response && error.response.status !== 401) {
-        toast.error("Không thể lấy danh sách lớp học. Vui lòng thử lại sau.");
+        toast.error("Không thể lấy danh sách lớp học. Vui lòng thử lại sau.", {
+          containerId: "sinhVienManagerToast"
+        });
       }
     }
   };
@@ -286,13 +292,7 @@ const SinhVienManager = ({ refreshKey }) => {
     setValidationErrors(errors);
     if (Object.keys(errors).length > 0) {
       toast.error('Vui lòng kiểm tra lại các thông tin bắt buộc!', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+        containerId: "sinhVienManagerToast"
       });
       return;
     }
@@ -306,12 +306,16 @@ const SinhVienManager = ({ refreshKey }) => {
     try {
       const usernameExists = await validationService.checkUsernameExists(username);
       if (usernameExists) {
-        toast.error('Mã sinh viên này đã được sử dụng làm tên đăng nhập.');
+        toast.error('Mã sinh viên này đã được sử dụng làm tên đăng nhập.', {
+          containerId: "sinhVienManagerToast"
+        });
         return;
       }
     } catch (error) {
       console.error('Lỗi kiểm tra trùng tên đăng nhập:', error);
-      toast.error('Lỗi khi kiểm tra tên đăng nhập.');
+      toast.error('Lỗi khi kiểm tra tên đăng nhập.', {
+        containerId: "sinhVienManagerToast"
+      });
       return;
     }
 
@@ -325,13 +329,7 @@ const SinhVienManager = ({ refreshKey }) => {
       });
       setShowAddSinhVienModal(false);
       toast.success('Sinh viên đã được tạo thành công!', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+        containerId: "sinhVienManagerToast"
       });
       fetchSinhVienList();
     } catch (error) {
@@ -339,44 +337,20 @@ const SinhVienManager = ({ refreshKey }) => {
       if (error.response) {
         if (error.response.status === 401) {
           toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
+            containerId: "sinhVienManagerToast"
           });
         } else {
           toast.error(error.response.data?.message || 'Có lỗi xảy ra khi thêm sinh viên!', {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
+            containerId: "sinhVienManagerToast"
           });
         }
       } else if (error.request) {
         toast.error('Không thể kết nối đến server. Vui lòng thử lại sau.', {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
+          containerId: "sinhVienManagerToast"
         });
       } else {
         toast.error('Có lỗi xảy ra. Vui lòng thử lại sau.', {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
+          containerId: "sinhVienManagerToast"
         });
       }
     }
@@ -442,13 +416,7 @@ const SinhVienManager = ({ refreshKey }) => {
     setValidationErrors(errors);
     if (Object.keys(errors).length > 0) {
       toast.error('Vui lòng kiểm tra lại các thông tin bắt buộc!', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+        containerId: "sinhVienManagerToast"
       });
       return;
     }
@@ -463,13 +431,7 @@ const SinhVienManager = ({ refreshKey }) => {
       );
       setShowEditModal(false);
       toast.success('Sinh viên đã được cập nhật thành công!', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+        containerId: "sinhVienManagerToast"
       });
       fetchSinhVienList();
     } catch (error) {
@@ -477,44 +439,20 @@ const SinhVienManager = ({ refreshKey }) => {
       if (error.response) {
         if (error.response.status === 401) {
           toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
+            containerId: "sinhVienManagerToast"
           });
         } else {
           toast.error(error.response.data?.message || 'Có lỗi xảy ra khi cập nhật sinh viên!', {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
+            containerId: "sinhVienManagerToast"
           });
         }
       } else if (error.request) {
         toast.error('Không thể kết nối đến server. Vui lòng thử lại sau.', {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
+          containerId: "sinhVienManagerToast"
         });
       } else {
         toast.error('Có lỗi xảy ra. Vui lòng thử lại sau.', {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
+          containerId: "sinhVienManagerToast"
         });
       }
     }
@@ -533,11 +471,15 @@ const SinhVienManager = ({ refreshKey }) => {
         headers: authHeader(),
       });
       setShowConfirmModal(false);
-      toast.success("Sinh viên đã được xóa thành công!");
+      toast.success("Sinh viên đã được xóa thành công!", {
+        containerId: "sinhVienManagerToast"
+      });
       fetchSinhVienList();
     } catch (error) {
       toast.error(
-        error.response?.data?.message || "Đã có lỗi xảy ra khi xóa sinh viên."
+        error.response?.data?.message || "Đã có lỗi xảy ra khi xóa sinh viên.", {
+          containerId: "sinhVienManagerToast"
+        }
       );
       setShowConfirmModal(false);
     }
@@ -548,7 +490,9 @@ const SinhVienManager = ({ refreshKey }) => {
     setCurrentSinhVien(sinhVien);
     
     if (!sinhVien.lienHe) {
-      toast.error("Sinh viên cần có số điện thoại để tạo tài khoản.");
+      toast.error("Sinh viên cần có số điện thoại để tạo tài khoản.", {
+        containerId: "sinhVienManagerToast"
+      });
       return;
     }
 
@@ -559,13 +503,17 @@ const SinhVienManager = ({ refreshKey }) => {
     try {
       const usernameExists = await validationService.checkUsernameExists(username);
       if (usernameExists) {
-        toast.error("Tên đăng nhập đã tồn tại.");
+        toast.error("Tên đăng nhập đã tồn tại.", {
+          containerId: "sinhVienManagerToast"
+        });
         return;
       }
 
       const headers = authHeader();
       if (!headers.Authorization) {
-        toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
+        toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.", {
+          containerId: "sinhVienManagerToast"
+        });
         return;
       }
 
@@ -575,7 +523,9 @@ const SinhVienManager = ({ refreshKey }) => {
         { headers }
       );
       
-      toast.success("Đã thêm tài khoản cho sinh viên thành công!");
+      toast.success("Đã thêm tài khoản cho sinh viên thành công!", {
+        containerId: "sinhVienManagerToast"
+      });
       fetchSinhVienList();
       setSinhVienAccounts(prev => ({
         ...prev,
@@ -585,14 +535,22 @@ const SinhVienManager = ({ refreshKey }) => {
       console.error("Lỗi khi thêm tài khoản:", error);
       if (error.response) {
         if (error.response.status === 401) {
-          toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
+          toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.", {
+            containerId: "sinhVienManagerToast"
+          });
         } else {
-          toast.error(error.response.data?.message || "Đã có lỗi xảy ra khi thêm tài khoản.");
+          toast.error(error.response.data?.message || "Đã có lỗi xảy ra khi thêm tài khoản.", {
+            containerId: "sinhVienManagerToast"
+          });
         }
       } else if (error.request) {
-        toast.error("Không thể kết nối đến máy chủ.");
+        toast.error("Không thể kết nối đến máy chủ.", {
+          containerId: "sinhVienManagerToast"
+        });
       } else {
-        toast.error("Đã có lỗi xảy ra khi thêm tài khoản.");
+        toast.error("Đã có lỗi xảy ra khi thêm tài khoản.", {
+          containerId: "sinhVienManagerToast"
+        });
       }
     }
   };
@@ -627,7 +585,20 @@ const SinhVienManager = ({ refreshKey }) => {
 
   return (
     <Container>
-      <ToastContainer />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        containerId="sinhVienManagerToast"
+      />
+
       <Card className="mb-4">
         <Card.Header>
           <div className="d-flex justify-content-between align-items-center mb-2">
@@ -1015,15 +986,14 @@ const SinhVienManager = ({ refreshKey }) => {
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => {
-            setShowEditModal(false);
-            setValidationErrors({});
-          }}>
+        <Modal.Footer className="bg-light">
+          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+            <FontAwesomeIcon icon={faTimes} className="me-2" />
             Hủy
           </Button>
           <Button variant="primary" onClick={handleUpdateSinhVien}>
-            Cập nhật
+            <FontAwesomeIcon icon={faSave} className="me-2" />
+            Lưu thay đổi
           </Button>
         </Modal.Footer>
       </Modal>

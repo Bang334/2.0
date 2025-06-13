@@ -276,9 +276,9 @@ const PhongManager = () => {
       
       // Đóng modal sau 1.5 giây để người dùng thấy thông báo
       setTimeout(() => {
-        setShowAddModal(false);
+      setShowAddModal(false);
         setSuccessMessage('');
-        fetchPhongList();
+      fetchPhongList();
       }, 1500);
 
     } catch (error) {
@@ -341,9 +341,9 @@ const PhongManager = () => {
       
       // Đóng modal sau 1.5 giây để người dùng thấy thông báo
       setTimeout(() => {
-        setShowEditModal(false);
+      setShowEditModal(false);
         setSuccessMessage('');
-        fetchPhongList();
+      fetchPhongList();
       }, 1500);
 
     } catch (error) {
